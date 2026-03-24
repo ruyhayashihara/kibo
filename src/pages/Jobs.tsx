@@ -1,102 +1,105 @@
+import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { Search, MapPin, Briefcase, Filter, ChevronDown, Clock, Building2 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { Card, CardContent } from "@/src/components/ui/card"
-import { Badge } from "@/src/components/ui/badge"
+import { Badge, BadgeProps } from "@/src/components/ui/badge"
+import { supabase } from "@/src/lib/supabase"
 
-const JOBS = [
-  {
-    id: 1,
-    title: "Desenvolvedor Front-end Sênior",
-    company: "TechNova Tokyo",
-    location: "Tóquio (Híbrido)",
-    salary: "¥6M - ¥9M / ano",
-    type: "CLT (Seishain)",
-    jlpt: "N3",
-    tags: ["React", "TypeScript", "Tailwind"],
-    postedAt: "Há 2 horas",
-    featured: true,
-    logo: "TN"
-  },
-  {
-    id: 2,
-    title: "Especialista em Marketing Digital",
-    company: "Global Reach Inc.",
-    location: "Osaka",
-    salary: "¥4.5M - ¥6M / ano",
-    type: "CLT (Seishain)",
-    jlpt: "N2",
-    tags: ["SEO", "Google Ads", "Conteúdo"],
-    postedAt: "Há 5 horas",
-    featured: false,
-    logo: "GR"
-  },
-  {
-    id: 3,
-    title: "Engenheiro de Software Backend",
-    company: "FinTech Japan",
-    location: "Tóquio (Remoto)",
-    salary: "¥7M - ¥11M / ano",
-    type: "Autônomo (Kojin Jigyou Nushi)",
-    jlpt: "N4",
-    tags: ["Node.js", "Python", "AWS"],
-    postedAt: "Ontem",
-    featured: true,
-    logo: "FJ"
-  },
-  {
-    id: 4,
-    title: "Professor de Inglês (ALT)",
-    company: "EduCorp",
-    location: "Kyoto",
-    salary: "¥3M - ¥3.5M / ano",
-    type: "Contrato (Keiyaku)",
-    jlpt: "N5",
-    tags: ["Educação", "Inglês Nativo"],
-    postedAt: "Ontem",
-    featured: false,
-    logo: "EC"
-  },
-  {
-    id: 5,
-    title: "Gerente de Projetos de TI",
-    company: "Innova Solutions",
-    location: "Fukuoka",
-    salary: "¥6M - ¥8.5M / ano",
-    type: "CLT (Seishain)",
-    jlpt: "N2",
-    tags: ["Agile", "Scrum", "Liderança"],
-    postedAt: "Há 2 dias",
-    featured: false,
-    logo: "IS"
-  }
-]
+const mapJlptToVariant = (jlpt: string | undefined): BadgeProps["variant"] => {
+  const validVariants: BadgeProps["variant"][] = ["n1", "n2", "n3", "n4", "n5"];
+  const variant = jlpt?.toLowerCase() as BadgeProps["variant"];
+  return validVariants.includes(variant) ? variant : "default";
+};
+
+interface JobWithCompany {
+  id: string
+  title: string
+  location: string
+  work_mode: string
+  job_type: string
+  salary_min: number | null
+  salary_max: number | null
+  jlpt_level: string | null
+  requirements: string[]
+  is_sponsored: boolean
+  is_featured: boolean
+  created_at: string
+  companies: { name: string; logo_url: string | null } | null
+}
 
 export function Jobs() {
+  const [jobs, setJobs] = useState<JobWithCompany[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchJobs() {
+      try {
+        const { data, error } = await supabase
+          .from('jobs')
+          .select('*, companies(name, logo_url)')
+          .order('is_featured', { ascending: false })
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        setJobs(data || [])
+      } catch (error) {
+        console.error('Erro ao carregar vagas:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchJobs()
+  }, [])
+
+  const formatSalary = (min: number | null, max: number | null) => {
+    if (!min && !max) return 'A combinar'
+    const formatYen = (num: number) => `¥${(num / 10000).toFixed(0)}M`
+    if (min && max) return `${formatYen(min)} - ${formatYen(max)}`
+    if (min) return `A partir de ${formatYen(min)}`
+    return `Até ${formatYen(max!)}`
+  }
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    if (diffHours < 1) return 'Agora'
+    if (diffHours < 24) return `Há ${diffHours} hora${diffHours > 1 ? 's' : ''}`
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays === 1) return 'Ontem'
+    if (diffDays < 7) return `Há ${diffDays} dias`
+    return date.toLocaleDateString('pt-BR')
+  }
+
+  const getCompanyInitials = (name: string) => {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  }
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
       {/* Search Header */}
       <div className="mb-10">
         <h1 className="text-3xl font-bold tracking-tight mb-6">Buscar Vagas</h1>
         <div className="glass-panel p-2 rounded-2xl flex flex-col md:flex-row gap-2">
-          <div className="flex-1 flex items-center px-4 bg-white/5 rounded-xl border border-white/5">
-            <Search className="h-5 w-5 text-gray-400 mr-3" />
+          <div className="flex-1 flex items-center px-4 bg-muted rounded-xl border border-border">
+            <Search className="h-5 w-5 text-muted-foreground mr-3" />
             <input 
               type="text" 
               placeholder="Cargo, habilidade ou empresa..." 
-              className="w-full bg-transparent border-none focus:outline-none text-white h-12 placeholder:text-gray-500"
+              className="w-full bg-transparent border-none focus:outline-none text-foreground h-12 placeholder:text-muted-foreground"
             />
           </div>
-          <div className="flex-1 flex items-center px-4 bg-white/5 rounded-xl border border-white/5">
-            <MapPin className="h-5 w-5 text-gray-400 mr-3" />
+          <div className="flex-1 flex items-center px-4 bg-muted rounded-xl border border-border">
+            <MapPin className="h-5 w-5 text-muted-foreground mr-3" />
             <select 
               name="region"
               defaultValue=""
-              className="w-full bg-transparent border-none focus:outline-none text-white h-12 appearance-none cursor-pointer"
+              className="w-full bg-transparent border-none focus:outline-none text-foreground h-12 appearance-none cursor-pointer"
             >
-              <option value="" className="bg-gray-900">Todas as Localidades</option>
-              <optgroup label="Região" className="bg-gray-900">
+              <option value="" className="bg-background">Todas as Localidades</option>
+              <optgroup label="Região" className="bg-background">
                 <option value="JP-R1">Hokkaido</option>
                 <option value="JP-R2">Tohoku</option>
                 <option value="JP-R3">Kanto</option>
@@ -179,42 +182,41 @@ export function Jobs() {
           
           <div className="glass-panel rounded-2xl p-6 hidden lg:block space-y-8">
             <div>
-              <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">Nível de Japonês</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Nível de Japonês</h3>
               <div className="space-y-3">
                 {["N1 (Fluente)", "N2 (Avançado)", "N3 (Intermediário)", "N4 (Básico)", "N5 (Iniciante)", "Sem requisito"].map((level) => (
                   <label key={level} className="flex items-center gap-3 cursor-pointer group">
-                    <div className="w-5 h-5 rounded border border-white/20 bg-black/20 group-hover:border-primary transition-colors flex items-center justify-center">
-                      {/* Checkbox icon would go here when active */}
+                    <div className="w-5 h-5 rounded border border-border bg-muted group-hover:border-primary transition-colors flex items-center justify-center">
                     </div>
-                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{level}</span>
+                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{level}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="h-px w-full bg-white/10" />
+            <div className="h-px w-full bg-border" />
 
             <div>
-              <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">Tipo de Contrato</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Tipo de Contrato</h3>
               <div className="space-y-3">
                 {["CLT (Seishain)", "Contrato (Keiyaku)", "Meio Período (Arubaito)", "Autônomo (Kojin Jigyou Nushi)"].map((type) => (
                   <label key={type} className="flex items-center gap-3 cursor-pointer group">
-                    <div className="w-5 h-5 rounded border border-white/20 bg-black/20 group-hover:border-primary transition-colors flex items-center justify-center" />
-                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{type}</span>
+                    <div className="w-5 h-5 rounded border border-border bg-muted group-hover:border-primary transition-colors flex items-center justify-center" />
+                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{type}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="h-px w-full bg-white/10" />
+            <div className="h-px w-full bg-border" />
 
             <div>
-              <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">Indústria</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Indústria</h3>
               <div className="space-y-3">
                 {["TI & Software", "Educação", "Engenharia", "Vendas & Marketing", "Finanças"].map((ind) => (
                   <label key={ind} className="flex items-center gap-3 cursor-pointer group">
-                    <div className="w-5 h-5 rounded border border-white/20 bg-black/20 group-hover:border-primary transition-colors flex items-center justify-center" />
-                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{ind}</span>
+                    <div className="w-5 h-5 rounded border border-border bg-muted group-hover:border-primary transition-colors flex items-center justify-center" />
+                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{ind}</span>
                   </label>
                 ))}
               </div>
@@ -227,7 +229,7 @@ export function Jobs() {
         {/* Job List */}
         <div className="flex-1 space-y-4">
           <div className="flex items-center justify-between mb-6">
-            <p className="text-sm text-gray-400">Mostrando <span className="text-white font-medium">124</span> vagas</p>
+            <p className="text-sm text-gray-400">Mostrando <span className="text-white font-medium">{jobs.length}</span> vagas</p>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-400">Ordenar por:</span>
               <Button variant="ghost" size="sm" className="h-8 rounded-full bg-white/5 border border-white/10">
@@ -237,66 +239,94 @@ export function Jobs() {
           </div>
 
           <div className="space-y-4">
-            {JOBS.map((job) => (
-              <Card key={job.id} className={`glass-panel-hover flex flex-col sm:flex-row gap-6 p-6 transition-all cursor-pointer border-white/5 ${job.featured ? 'border-primary/30 glow-primary/10 bg-primary/5' : ''}`}>
-                <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 border border-white/10 flex items-center justify-center text-xl font-bold text-white shadow-lg shrink-0">
-                  {job.logo}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-xl font-semibold text-white group-hover:text-primary transition-colors">
-                          <Link to={`/vagas/${job.id}`} className="hover:underline">{job.title}</Link>
-                        </h3>
-                        {job.featured && (
-                          <Badge variant="glass" className="bg-primary/20 text-primary border-primary/30 text-[10px] uppercase tracking-wider py-0">
-                            Destaque
+            {loading ? (
+              <>
+                {[1, 2, 3, 4].map(i => (
+                  <Card key={i} className="glass-panel p-6 animate-pulse">
+                    <div className="flex flex-col sm:flex-row gap-6">
+                      <div className="h-16 w-16 rounded-xl bg-muted shrink-0" />
+                      <div className="flex-1 space-y-3">
+                        <div className="h-6 w-2/3 bg-muted rounded" />
+                        <div className="h-4 w-1/3 bg-muted rounded" />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </>
+            ) : jobs.length > 0 ? (
+              jobs.map((job) => (
+                <Card key={job.id} className={`glass-panel-hover flex flex-col sm:flex-row gap-6 p-6 transition-all cursor-pointer border-border ${job.is_featured ? 'border-primary/30 glow-primary/10 bg-primary/5' : ''}`}>
+                  {job.companies?.logo_url ? (
+                    <img 
+                      src={job.companies.logo_url} 
+                      alt={job.companies.name} 
+                      className="h-16 w-16 rounded-xl border border-border object-contain bg-white/5 shrink-0"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-muted to-background border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-lg shrink-0">
+                      {getCompanyInitials(job.companies?.name || 'XX')}
+                    </div>
+                  )}
+                  
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                            <Link to={`/vagas/${job.id}`} className="hover:underline">{job.title}</Link>
+                          </h3>
+                          {job.is_featured && (
+                            <Badge variant="glass" className="bg-primary/20 text-primary border-primary/30 text-[10px] uppercase tracking-wider py-0">
+                              Destaque
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Building2 className="mr-1.5 h-4 w-4" />
+                          {job.companies?.name || 'Empresa'}
+                        </div>
+                      </div>
+                      <Badge variant={mapJlptToVariant(job.jlpt_level)} className="font-mono self-start">{job.jlpt_level || 'N/A'}</Badge>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-y-2 gap-x-6 mb-4 mt-4">
+                      <div className="flex items-center text-sm text-foreground/80">
+                        <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {job.location}
+                      </div>
+                      <div className="flex items-center text-sm text-foreground/80">
+                        <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {formatSalary(job.salary_min, job.salary_max)}
+                      </div>
+                      <div className="flex items-center text-sm text-foreground/80">
+                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {job.work_mode}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                      <div className="flex flex-wrap gap-2">
+                        {job.requirements?.slice(0, 3).map((tag, idx) => (
+                          <Badge key={idx} variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted/80">
+                            {tag}
                           </Badge>
-                        )}
+                        ))}
                       </div>
-                      <div className="flex items-center text-sm text-gray-400">
-                        <Building2 className="mr-1.5 h-4 w-4" />
-                        {job.company}
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs text-muted-foreground hidden sm:inline-block">{formatDate(job.created_at)}</span>
+                        <Button variant="secondary" size="sm" className="rounded-full bg-muted hover:bg-muted/80" asChild>
+                          <Link to={`/vagas/${job.id}`}>Ver Vaga</Link>
+                        </Button>
                       </div>
                     </div>
-                    <Badge variant={job.jlpt.toLowerCase() as any} className="font-mono self-start">{job.jlpt}</Badge>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-y-2 gap-x-6 mb-4 mt-4">
-                    <div className="flex items-center text-sm text-gray-300">
-                      <MapPin className="mr-2 h-4 w-4 text-gray-500" />
-                      {job.location}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-300">
-                      <Briefcase className="mr-2 h-4 w-4 text-gray-500" />
-                      {job.salary}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-300">
-                      <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                      {job.type}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
-                    <div className="flex flex-wrap gap-2">
-                      {job.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="bg-white/5 text-gray-300 hover:bg-white/10">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs text-gray-500 hidden sm:inline-block">{job.postedAt}</span>
-                      <Button variant="secondary" size="sm" className="rounded-full bg-white/10 hover:bg-white/20" asChild>
-                        <Link to={`/vagas/${job.id}`}>Ver Vaga</Link>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                Nenhuma vaga encontrada.
+              </div>
+            )}
           </div>
           
           {/* Pagination */}

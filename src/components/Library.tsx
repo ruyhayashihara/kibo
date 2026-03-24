@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { Bookmark, MapPin, Building, Globe, ChevronDown, Check } from 'lucide-react';
 
 // 6. Work mode badge (Remoto = green, Híbrido = blue, Presencial = gray)
-export const WorkModeBadge = ({ mode }: { mode: 'Remoto' | 'Híbrido' | 'Presencial' }) => {
-  const colors = {
-    Remoto: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    Híbrido: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    Presencial: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+export const WorkModeBadge = ({ mode }: { mode: 'Remoto' | 'Híbrido' | 'Presencial' | string }) => {
+  const colors: Record<string, string> = {
+    Remoto: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    Híbrido: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    Presencial: 'bg-slate-500/10 text-muted-foreground border-slate-500/20',
   };
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${colors[mode]}`}>
+    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${colors[mode] || 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
       {/* DATA: supabase.jobs.work_mode */}
       {mode}
     </span>
@@ -17,15 +17,15 @@ export const WorkModeBadge = ({ mode }: { mode: 'Remoto' | 'Híbrido' | 'Presenc
 };
 
 // 7. Job type badge (CLT = blue, PJ = purple, Freelance = orange, Estágio = teal)
-export const JobTypeBadge = ({ type }: { type: 'CLT' | 'PJ' | 'Freelance' | 'Estágio' }) => {
-  const colors = {
-    CLT: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    PJ: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    Freelance: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    Estágio: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+export const JobTypeBadge = ({ type }: { type: 'CLT' | 'PJ' | 'Freelance' | 'Estágio' | string }) => {
+  const colors: Record<string, string> = {
+    CLT: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    PJ: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+    Freelance: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
+    Estágio: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
   };
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${colors[type]}`}>
+    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${colors[type] || 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
       {/* DATA: supabase.jobs.job_type */}
       {type}
     </span>
@@ -49,8 +49,8 @@ export const BookmarkButton = ({ initialSaved = false }: { initialSaved?: boolea
       onClick={(e) => { e.preventDefault(); setSaved(!saved); }}
       className={`p-2.5 rounded-full transition-all duration-300 ${
         saved 
-          ? 'bg-pink-500/20 text-pink-400 hover:bg-pink-500/30' 
-          : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+          ? 'bg-pink-500/20 text-pink-600 dark:text-pink-400 hover:bg-pink-500/30' 
+          : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
       }`}
       aria-label="Salvar vaga"
     >
@@ -60,9 +60,19 @@ export const BookmarkButton = ({ initialSaved = false }: { initialSaved?: boolea
 };
 
 // 1. Job card (default + featured/sponsored variant)
+interface JobCardProps {
+  title: string;
+  company: string;
+  location: string;
+  workMode: string;
+  jobType: string;
+  isSponsored?: boolean;
+  logoUrl?: string;
+}
+
 export const JobCard = ({
   title, company, location, workMode, jobType, isSponsored = false, logoUrl
-}: any) => {
+}: JobCardProps) => {
   return (
     <div className={`relative bg-[#0c1222] rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 border ${
       isSponsored 
@@ -112,7 +122,13 @@ export const JobCard = ({
 };
 
 // 2. Company logo card
-export const CompanyCard = ({ name, openJobs, logoUrl }: any) => (
+interface CompanyCardProps {
+  name: string;
+  openJobs: number;
+  logoUrl?: string;
+}
+
+export const CompanyCard = ({ name, openJobs, logoUrl }: CompanyCardProps) => (
   <div className="bg-[#0c1222] rounded-2xl p-6 border border-white/10 hover:border-blue-500/50 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.2)] transition-all duration-300 text-center group cursor-pointer">
     <div className="w-20 h-20 mx-auto rounded-2xl bg-white/5 p-3 border border-white/10 mb-4 group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
       <img src={logoUrl || "https://placehold.co/80x80/1e293b/94a3b8?text=Logo"} alt={name} className="w-full h-full object-contain rounded-xl" />
@@ -208,7 +224,7 @@ export const ProfileProgress = ({ percentage }: { percentage: number }) => (
         </div>
       </div>
 
-      <button className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl text-sm font-bold transition-all duration-300 hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.1)]">
+      <button className="w-full py-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-sm font-bold transition-all duration-300 shadow-lg shadow-primary/20">
         Atualizar Perfil
       </button>
     </div>

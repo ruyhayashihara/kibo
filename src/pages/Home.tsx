@@ -1,80 +1,81 @@
+import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { Search, MapPin, Briefcase, Building2, Globe, Clock, ChevronRight } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card"
-import { Badge } from "@/src/components/ui/badge"
+import { Badge, BadgeProps } from "@/src/components/ui/badge"
+import { supabase } from "@/src/lib/supabase"
 
-const FEATURED_JOBS = [
-  {
-    id: 1,
-    title: "Desenvolvedor Front-end Sênior",
-    company: "TechNova Tokyo",
-    location: "Tóquio (Híbrido)",
-    salary: "¥6M - ¥9M / ano",
-    type: "CLT",
-    jlpt: "N3",
-    tags: ["React", "TypeScript", "Tailwind"],
-    logo: "TN"
-  },
-  {
-    id: 2,
-    title: "Especialista em Marketing Digital",
-    company: "Global Reach Inc.",
-    location: "Osaka",
-    salary: "¥4.5M - ¥6M / ano",
-    type: "CLT",
-    jlpt: "N2",
-    tags: ["SEO", "Google Ads", "Conteúdo"],
-    logo: "GR"
-  },
-  {
-    id: 3,
-    title: "Engenheiro de Software Backend",
-    company: "FinTech Japan",
-    location: "Tóquio (Remoto)",
-    salary: "¥7M - ¥11M / ano",
-    type: "Autônomo (Kojin Jigyou Nushi)",
-    jlpt: "N4",
-    tags: ["Node.js", "Python", "AWS"],
-    logo: "FJ"
-  },
-  {
-    id: 4,
-    title: "Professor de Inglês (ALT)",
-    company: "EduCorp",
-    location: "Kyoto",
-    salary: "¥3M - ¥3.5M / ano",
-    type: "Temporário",
-    jlpt: "N5",
-    tags: ["Educação", "Inglês Nativo"],
-    logo: "EC"
-  },
-  {
-    id: 5,
-    title: "Gerente de Projetos de TI",
-    company: "Innova Solutions",
-    location: "Fukuoka",
-    salary: "¥6M - ¥8.5M / ano",
-    type: "CLT",
-    jlpt: "N2",
-    tags: ["Agile", "Scrum", "Liderança"],
-    logo: "IS"
-  },
-  {
-    id: 6,
-    title: "Analista de Suporte Bilíngue",
-    company: "SupportTech",
-    location: "Yokohama",
-    salary: "¥3.5M - ¥5M / ano",
-    type: "CLT",
-    jlpt: "N1",
-    tags: ["Atendimento", "TI", "Inglês"],
-    logo: "ST"
-  }
-]
+const mapJlptToVariant = (jlpt: string | undefined): BadgeProps["variant"] => {
+  const validVariants: BadgeProps["variant"][] = ["n1", "n2", "n3", "n4", "n5"];
+  const variant = jlpt?.toLowerCase() as BadgeProps["variant"];
+  return validVariants.includes(variant) ? variant : "default";
+};
+
+interface JobWithCompany {
+  id: string
+  title: string
+  location: string
+  work_mode: string
+  job_type: string
+  salary_min: number | null
+  salary_max: number | null
+  jlpt_level: string | null
+  requirements: string[]
+  is_sponsored: boolean
+  is_featured: boolean
+  companies: { name: string; logo_url: string | null } | null
+}
 
 export function Home() {
+  const [featuredJobs, setFeaturedJobs] = useState<JobWithCompany[]>([])
+  const [companies, setCompanies] = useState<{ id: string; name: string; logo_url: string | null }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const { data: jobsData, error: jobsError } = await supabase
+          .from('jobs')
+          .select('*, companies(name, logo_url)')
+          .eq('is_featured', true)
+          .limit(6)
+          .order('created_at', { ascending: false })
+
+        if (jobsError) throw jobsError
+        setFeaturedJobs(jobsData || [])
+
+        const { data: companiesData, error: companiesError } = await supabase
+          .from('companies')
+          .select('id, name, logo_url')
+          .gt('open_jobs', 0)
+          .order('open_jobs', { ascending: false })
+          .limit(12)
+
+        if (companiesError) throw companiesError
+        setCompanies(companiesData || [])
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  const formatSalary = (min: number | null, max: number | null) => {
+    if (!min && !max) return 'A combinar'
+    const formatYen = (num: number) => `¥${(num / 10000).toFixed(0)}M`
+    if (min && max) return `${formatYen(min)} - ${formatYen(max)} / ano`
+    if (min) return `A partir de ${formatYen(min)}`
+    return `Até ${formatYen(max!)}`
+  }
+
+  const getCompanyInitials = (name: string) => {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  }
   return (
     <div className="flex flex-col gap-24 pb-24">
       {/* Hero Section */}
@@ -85,7 +86,7 @@ export function Home() {
         </div>
         
         <div className="container relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <Badge variant="glass" className="mb-6 py-1.5 px-4 text-sm border-primary/30 text-primary-foreground/90">
+          <Badge variant="glass" className="mb-6 py-1.5 px-4 text-sm border-primary/30 text-primary">
             <span className="mr-2 inline-block h-2 w-2 rounded-full bg-primary animate-pulse" />
             Mais de 2.500 vagas abertas hoje
           </Badge>
@@ -188,7 +189,7 @@ export function Home() {
           
           {/* Quick Filters */}
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <span className="text-sm text-gray-500 flex items-center mr-2">Buscas populares:</span>
+            <span className="text-sm text-muted-foreground flex items-center mr-2">Buscas populares:</span>
             {["TI & Software", "Engenharia", "Marketing", "Nível N3+", "Inglês Nativo", "Remoto"].map((tag) => (
               <Badge key={tag} variant="glass" className="hover:bg-white/10 cursor-pointer transition-colors py-1.5 px-4">
                 {tag}
@@ -200,8 +201,8 @@ export function Home() {
       
       {/* Ad Banner Slot */}
       <section className="container mx-auto max-w-7xl px-4 flex flex-col items-center -mt-8 mb-16">
-        <span className="text-[10px] uppercase tracking-widest text-gray-500 mb-2">Anúncio</span>
-        <div className="w-[320px] h-[50px] md:w-[728px] md:h-[90px] bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-gray-500 text-xs md:text-sm font-medium">
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Anúncio</span>
+        <div className="w-[320px] h-[50px] md:w-[728px] md:h-[90px] bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-muted-foreground text-xs md:text-sm font-medium">
           Espaço publicitário — <span className="hidden md:inline ml-1">728x90</span><span className="md:hidden ml-1">320x50</span>
         </div>
       </section>
@@ -221,53 +222,88 @@ export function Home() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURED_JOBS.map((job) => (
-            <Card key={job.id} className="glass-panel-hover flex flex-col group cursor-pointer border-border">
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-muted to-background border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-lg group-hover:glow-primary transition-all">
-                    {job.logo}
+          {loading ? (
+            <>
+              {[1, 2, 3].map(i => (
+                <Card key={i} className="glass-panel border-border animate-pulse">
+                  <CardHeader>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="h-12 w-12 rounded-xl bg-muted" />
+                      <div className="h-6 w-10 rounded bg-muted" />
+                    </div>
+                    <div className="h-6 w-3/4 rounded bg-muted mb-2" />
+                    <div className="h-4 w-1/2 rounded bg-muted" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="h-4 w-full rounded bg-muted" />
+                      <div className="h-4 w-2/3 rounded bg-muted" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          ) : featuredJobs.length > 0 ? (
+            featuredJobs.map((job) => (
+              <Card key={job.id} className="glass-panel-hover flex flex-col group cursor-pointer border-border">
+                <CardHeader className="pb-4">
+                  <div className="flex justify-between items-start mb-4">
+                    {job.companies?.logo_url ? (
+                      <img 
+                        src={job.companies.logo_url} 
+                        alt={job.companies.name} 
+                        className="h-12 w-12 rounded-xl border border-border object-contain bg-white/5"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-muted to-background border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-lg group-hover:glow-primary transition-all">
+                        {getCompanyInitials(job.companies?.name || 'XX')}
+                      </div>
+                    )}
+                    <Badge variant={mapJlptToVariant(job.jlpt_level)} className="font-mono">{job.jlpt_level || 'N/A'}</Badge>
                   </div>
-                  <Badge variant={job.jlpt.toLowerCase() as any} className="font-mono">{job.jlpt}</Badge>
-                </div>
-                <CardTitle className="text-xl mb-1 group-hover:text-primary transition-colors text-foreground">{job.title}</CardTitle>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Building2 className="mr-1.5 h-4 w-4" />
-                  {job.company}
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="space-y-2 mb-6">
-                  <div className="flex items-center text-sm text-foreground/80">
-                    <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {job.location}
+                  <CardTitle className="text-xl mb-1 group-hover:text-primary transition-colors text-foreground">{job.title}</CardTitle>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Building2 className="mr-1.5 h-4 w-4" />
+                    {job.companies?.name || 'Empresa'}
                   </div>
-                  <div className="flex items-center text-sm text-foreground/80">
-                    <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {job.salary}
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <div className="space-y-2 mb-6">
+                    <div className="flex items-center text-sm text-foreground/80">
+                      <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                      {job.location}
+                    </div>
+                    <div className="flex items-center text-sm text-foreground/80">
+                      <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
+                      {formatSalary(job.salary_min, job.salary_max)}
+                    </div>
+                    <div className="flex items-center text-sm text-foreground/80">
+                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                      {job.work_mode}
+                    </div>
                   </div>
-                  <div className="flex items-center text-sm text-foreground/80">
-                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {job.type}
+                  <div className="flex flex-wrap gap-2">
+                    {job.requirements?.slice(0, 3).map((tag, idx) => (
+                      <Badge key={idx} variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted/80">
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {job.tags.map(tag => (
-                    <Badge key={tag} variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted/80">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter className="pt-0 border-t border-border mt-auto">
-                <Button variant="ghost" className="w-full mt-4 justify-between group-hover:bg-muted" asChild>
-                  <Link to={`/vagas/${job.id}`}>
-                    Ver detalhes <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                </CardContent>
+                <CardFooter className="pt-0 border-t border-border mt-auto">
+                  <Button variant="ghost" className="w-full mt-4 justify-between group-hover:bg-muted" asChild>
+                    <Link to={`/vagas/${job.id}`}>
+                      Ver detalhes <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-12 text-muted-foreground">
+              Nenhuma vaga em destaque no momento.
+            </div>
+          )}
         </div>
         <div className="mt-8 text-center sm:hidden">
           <Button variant="outline" className="w-full rounded-full" asChild>
@@ -289,11 +325,29 @@ export function Home() {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 relative z-10">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-              <div key={i} className="aspect-square rounded-2xl bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-colors cursor-pointer group">
-                <Building2 className="h-8 w-8 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+            {loading ? (
+              <>
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="aspect-square rounded-2xl bg-muted border border-border animate-pulse" />
+                ))}
+              </>
+            ) : companies.length > 0 ? (
+              companies.map((company) => (
+                <div key={company.id} className="aspect-square rounded-2xl bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-colors cursor-pointer group overflow-hidden">
+                  {company.logo_url ? (
+                    <img src={company.logo_url} alt={company.name} className="w-10 h-10 object-contain" />
+                  ) : (
+                    <span className="text-lg font-bold text-muted-foreground/40 group-hover:text-primary transition-colors">
+                      {getCompanyInitials(company.name)}
+                    </span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-6 text-center py-8 text-muted-foreground">
+                Nenhuma empresa cadastrada ainda.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>

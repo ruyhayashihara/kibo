@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Briefcase, MapPin, JapaneseYen, Tag, Calendar, Star, 
@@ -9,10 +9,20 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/src/components/ui/button";
 import { Badge } from "@/src/components/ui/badge";
+import { supabase } from "@/src/lib/supabase";
 
 export function CompanyNewJob() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -78,12 +88,40 @@ export function CompanyNewJob() {
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 3));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate API call
-    setTimeout(() => {
-      navigate('/empresa/dashboard');
-    }, 1000);
+    
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .insert({
+          title: formData.title,
+          location: formData.location,
+          work_mode: formData.workMode,
+          job_type: formData.contractType,
+          salary_min: formData.salaryMin ? parseInt(formData.salaryMin) : null,
+          salary_max: formData.salaryMax ? parseInt(formData.salaryMax) : null,
+          salary_tbd: formData.salaryTbd,
+          description: formData.description,
+          requirements: formData.requirements,
+          benefits: formData.benefits,
+          experience_level: formData.experienceLevel,
+          jlpt_level: formData.jlpt || null,
+          closing_date: formData.closingDate || null,
+          is_sponsored: formData.isSponsored,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      timeoutRef.current = setTimeout(() => {
+        navigate('/empresa/dashboard');
+      }, 1000);
+    } catch (error) {
+      console.error('Erro ao salvar vaga:', error)
+      alert('Erro ao salvar a vaga. Tente novamente.')
+    }
   };
 
   const availableBenefits = [
@@ -92,8 +130,8 @@ export function CompanyNewJob() {
     'Participação nos Lucros (PLR)', 'Horário Flexível'
   ];
 
-  const inputClasses = "w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-primary/50 focus:border-primary/50 outline-none transition-all";
-  const labelClasses = "block text-sm font-medium text-gray-300 mb-1.5";
+  const inputClasses = "w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50 outline-none transition-all";
+  const labelClasses = "block text-sm font-medium text-muted-foreground mb-1.5";
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -106,7 +144,7 @@ export function CompanyNewJob() {
               <Link to="/empresa/dashboard" className="text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1 mb-4 transition-colors">
                 <ChevronLeft className="w-4 h-4" /> Voltar ao Dashboard
               </Link>
-              <h1 className="text-4xl font-bold text-white glow-text flex items-center gap-4">
+              <h1 className="text-4xl font-bold text-foreground glow-text flex items-center gap-4">
                 <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-primary">
                   <Plus className="w-7 h-7 text-white" />
                 </div>
@@ -125,12 +163,12 @@ export function CompanyNewJob() {
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-500 ${
                       currentStep >= step 
                         ? 'bg-primary text-white glow-primary scale-110' 
-                        : 'bg-gray-800 text-gray-500 border border-white/10'
+                        : 'bg-muted text-muted-foreground border border-border'
                     }`}
                   >
                     {currentStep > step ? <CheckCircle2 className="w-6 h-6" /> : step}
                   </div>
-                  <span className={`text-xs font-semibold uppercase tracking-wider ${currentStep >= step ? 'text-primary' : 'text-gray-500'}`}>
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${currentStep >= step ? 'text-primary' : 'text-muted-foreground'}`}>
                     {step === 1 ? 'Básico' : step === 2 ? 'Detalhes' : 'Publicar'}
                   </span>
                 </div>
@@ -140,7 +178,7 @@ export function CompanyNewJob() {
         </div>
 
         {/* Form Container */}
-        <div className="glass-panel rounded-3xl overflow-hidden border-white/10">
+        <div className="glass-panel rounded-3xl overflow-hidden border-border">
           <div className="p-8 sm:p-12">
             <AnimatePresence mode="wait">
               
@@ -153,9 +191,9 @@ export function CompanyNewJob() {
                   exit={{ opacity: 0, y: -20 }}
                   className="space-y-8"
                 >
-                  <div className="flex items-center gap-3 mb-2">
+                   <div className="flex items-center gap-3 mb-2">
                     <div className="h-8 w-1 bg-primary rounded-full" />
-                    <h2 className="text-2xl font-bold text-white">Informações Gerais</h2>
+                    <h2 className="text-2xl font-bold text-foreground">Informações Gerais</h2>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -171,52 +209,52 @@ export function CompanyNewJob() {
                     <div>
                       <label className={labelClasses}>Área / Setor *</label>
                       <select name="area" value={formData.area} onChange={handleInputChange} className={`${inputClasses} appearance-none cursor-pointer`}>
-                        <option value="" className="bg-gray-900">Selecione uma área</option>
-                        <option value="tecnologia" className="bg-gray-900">Tecnologia / TI</option>
-                        <option value="design" className="bg-gray-900">Design / UX</option>
-                        <option value="marketing" className="bg-gray-900">Marketing</option>
-                        <option value="vendas" className="bg-gray-900">Vendas</option>
-                        <option value="rh" className="bg-gray-900">Recursos Humanos</option>
+                        <option value="" className="bg-background">Selecione uma área</option>
+                        <option value="tecnologia" className="bg-background">Tecnologia / TI</option>
+                        <option value="design" className="bg-background">Design / UX</option>
+                        <option value="marketing" className="bg-background">Marketing</option>
+                        <option value="vendas" className="bg-background">Vendas</option>
+                        <option value="rh" className="bg-background">Recursos Humanos</option>
                       </select>
                     </div>
 
                     <div>
                       <label className={labelClasses}>Nível de Experiência *</label>
                       <select name="experienceLevel" value={formData.experienceLevel} onChange={handleInputChange} className={`${inputClasses} appearance-none cursor-pointer`}>
-                        <option value="" className="bg-gray-900">Selecione o nível</option>
-                        <option value="estagio" className="bg-gray-900">Estágio</option>
-                        <option value="junior" className="bg-gray-900">Júnior</option>
-                        <option value="pleno" className="bg-gray-900">Pleno</option>
-                        <option value="senior" className="bg-gray-900">Sênior</option>
-                        <option value="especialista" className="bg-gray-900">Especialista</option>
+                        <option value="" className="bg-background">Selecione o nível</option>
+                        <option value="estagio" className="bg-background">Estágio</option>
+                        <option value="junior" className="bg-background">Júnior</option>
+                        <option value="pleno" className="bg-background">Pleno</option>
+                        <option value="senior" className="bg-background">Sênior</option>
+                        <option value="especialista" className="bg-background">Especialista</option>
                       </select>
                     </div>
 
                     <div>
                       <label className={labelClasses}>Tipo de Contrato *</label>
                       <select name="contractType" value={formData.contractType} onChange={handleInputChange} className={`${inputClasses} appearance-none cursor-pointer`}>
-                        <option value="" className="bg-gray-900">Selecione o contrato</option>
-                        <option value="clt" className="bg-gray-900">CLT (Seishain)</option>
-                        <option value="contrato" className="bg-gray-900">Contrato (Keiyaku)</option>
-                        <option value="arubaito" className="bg-gray-900">Meio Período (Arubaito)</option>
-                        <option value="autonomo" className="bg-gray-900">Autônomo (Kojin Jigyou Nushi)</option>
+                        <option value="" className="bg-background">Selecione o contrato</option>
+                        <option value="clt" className="bg-background">CLT (Seishain)</option>
+                        <option value="contrato" className="bg-background">Contrato (Keiyaku)</option>
+                        <option value="arubaito" className="bg-background">Meio Período (Arubaito)</option>
+                        <option value="autonomo" className="bg-background">Autônomo (Kojin Jigyou Nushi)</option>
                       </select>
                     </div>
 
                     <div>
                       <label className={labelClasses}>Modalidade *</label>
                       <select name="workMode" value={formData.workMode} onChange={handleInputChange} className={`${inputClasses} appearance-none cursor-pointer`}>
-                        <option value="" className="bg-gray-900">Selecione a modalidade</option>
-                        <option value="remoto" className="bg-gray-900">100% Remoto</option>
-                        <option value="hibrido" className="bg-gray-900">Híbrido</option>
-                        <option value="presencial" className="bg-gray-900">Presencial</option>
+                        <option value="" className="bg-background">Selecione a modalidade</option>
+                        <option value="remoto" className="bg-background">100% Remoto</option>
+                        <option value="hibrido" className="bg-background">Híbrido</option>
+                        <option value="presencial" className="bg-background">Presencial</option>
                       </select>
                     </div>
 
                     <div className="col-span-1 md:col-span-2">
                       <label className={labelClasses}>Localização (Cidade - Estado)</label>
                       <div className="relative">
-                        <MapPin className="absolute left-4 top-3.5 w-5 h-5 text-gray-500" />
+                        <MapPin className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
                         <input 
                           type="text" name="location" value={formData.location} onChange={handleInputChange}
                           placeholder="Ex: Osaka"
@@ -231,23 +269,32 @@ export function CompanyNewJob() {
                       )}
                     </div>
 
-                    <div className="col-span-1 md:col-span-2 bg-white/5 p-6 rounded-2xl border border-white/5">
+                    <div className="col-span-1 md:col-span-2 bg-muted p-6 rounded-2xl border border-border">
                       <div className="flex items-center justify-between mb-6">
-                        <label className="text-sm font-semibold text-white uppercase tracking-wider">Faixa Salarial (Mensal)</label>
+                        <span className="text-sm font-semibold text-foreground uppercase tracking-wider">Faixa Salarial (Mensal)</span>
                         <label className="flex items-center cursor-pointer group">
                           <div className="relative">
-                            <input type="checkbox" name="salaryTbd" checked={formData.salaryTbd} onChange={handleInputChange} className="sr-only" />
-                            <div className={`block w-12 h-7 rounded-full transition-colors ${formData.salaryTbd ? 'bg-primary' : 'bg-gray-700'}`}></div>
+                            <input 
+                              type="checkbox" 
+                              name="salaryTbd" 
+                              checked={formData.salaryTbd} 
+                              onChange={handleInputChange} 
+                              className="sr-only"
+                              role="switch"
+                              aria-checked={formData.salaryTbd}
+                              aria-label="Definir salário a combinar"
+                            />
+                            <div className={`block w-12 h-7 rounded-full transition-colors ${formData.salaryTbd ? 'bg-primary' : 'bg-input'}`}></div>
                             <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform ${formData.salaryTbd ? 'transform translate-x-5' : ''}`}></div>
                           </div>
-                          <div className="ml-3 text-sm font-medium text-gray-400 group-hover:text-white transition-colors">A combinar</div>
+                          <div className="ml-3 text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">A combinar</div>
                         </label>
                       </div>
                       
                       {!formData.salaryTbd && (
                         <div className="grid grid-cols-2 gap-6">
                           <div className="relative">
-                            <JapaneseYen className="absolute left-4 top-3.5 w-5 h-5 text-gray-500" />
+                            <JapaneseYen className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
                             <input 
                               type="number" name="salaryMin" value={formData.salaryMin} onChange={handleInputChange}
                               placeholder="Mínimo"
@@ -255,7 +302,7 @@ export function CompanyNewJob() {
                             />
                           </div>
                           <div className="relative">
-                            <JapaneseYen className="absolute left-4 top-3.5 w-5 h-5 text-gray-500" />
+                            <JapaneseYen className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
                             <input 
                               type="number" name="salaryMax" value={formData.salaryMax} onChange={handleInputChange}
                               placeholder="Máximo"
@@ -278,38 +325,38 @@ export function CompanyNewJob() {
                   exit={{ opacity: 0, y: -20 }}
                   className="space-y-8"
                 >
-                  <div className="flex items-center gap-3 mb-2">
+                   <div className="flex items-center gap-3 mb-2">
                     <div className="h-8 w-1 bg-primary rounded-full" />
-                    <h2 className="text-2xl font-bold text-white">Detalhes da Vaga</h2>
+                    <h2 className="text-2xl font-bold text-foreground">Detalhes da Vaga</h2>
                   </div>
                   
                   <div>
                     <label className={labelClasses}>Descrição da Vaga *</label>
-                    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-all">
-                      <div className="bg-white/5 border-b border-white/10 px-4 py-3 flex gap-3">
-                        <button type="button" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><Bold className="w-4 h-4" /></button>
-                        <button type="button" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><Italic className="w-4 h-4" /></button>
-                        <div className="w-px h-6 bg-white/10 mx-1 self-center"></div>
-                        <button type="button" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><List className="w-4 h-4" /></button>
-                        <button type="button" className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><LinkIcon className="w-4 h-4" /></button>
+                    <div className="bg-input border border-border rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+                      <div className="bg-muted border-b border-border px-4 py-3 flex gap-3">
+                        <button type="button" className="p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-lg transition-colors"><Bold className="w-4 h-4" /></button>
+                        <button type="button" className="p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-lg transition-colors"><Italic className="w-4 h-4" /></button>
+                        <div className="w-px h-6 bg-border mx-1 self-center"></div>
+                        <button type="button" className="p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-lg transition-colors"><List className="w-4 h-4" /></button>
+                        <button type="button" className="p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-lg transition-colors"><LinkIcon className="w-4 h-4" /></button>
                       </div>
                       <textarea 
                         name="description" value={formData.description} onChange={handleInputChange}
                         rows={8}
                         placeholder="Descreva as responsabilidades, o dia a dia e o que você espera do candidato..."
-                        className="w-full px-6 py-4 bg-transparent outline-none resize-y min-h-[200px] text-white placeholder:text-gray-600"
+                        className="w-full px-6 py-4 bg-transparent outline-none resize-y min-h-[200px] text-foreground placeholder:text-muted-foreground/60"
                       ></textarea>
                     </div>
                   </div>
 
                   <div>
                     <label className={labelClasses}>Requisitos Obrigatórios *</label>
-                    <p className="text-xs text-gray-500 mb-3">Pressione Enter para adicionar uma tag.</p>
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-primary/50 transition-all flex flex-wrap gap-2.5 items-center min-h-[60px]">
+                    <p className="text-xs text-muted-foreground mb-3">Pressione Enter para adicionar uma tag.</p>
+                    <div className="bg-input border border-border rounded-2xl p-3 focus-within:ring-2 focus-within:ring-primary/50 transition-all flex flex-wrap gap-2.5 items-center min-h-[60px]">
                       {formData.requirements.map(req => (
                         <Badge key={req} variant="glass" className="bg-primary/20 text-primary border-primary/30 px-3 py-1.5 flex items-center gap-2 text-sm">
                           {req}
-                          <button type="button" onClick={() => removeRequirement(req)} className="hover:text-white transition-colors">
+                          <button type="button" onClick={() => removeRequirement(req)} className="hover:text-foreground transition-colors">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </Badge>
@@ -320,7 +367,7 @@ export function CompanyNewJob() {
                         onChange={e => setReqInput(e.target.value)}
                         onKeyDown={handleAddRequirement}
                         placeholder={formData.requirements.length === 0 ? "Ex: React, Node.js, Inglês Fluente..." : "Adicionar mais..."}
-                        className="flex-1 min-w-[200px] outline-none bg-transparent py-1.5 px-3 text-white placeholder:text-gray-600"
+                        className="flex-1 min-w-[200px] outline-none bg-transparent py-1.5 px-3 text-foreground placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
@@ -329,8 +376,8 @@ export function CompanyNewJob() {
                     <label className={labelClasses}>Benefícios</label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {availableBenefits.map(benefit => (
-                        <label key={benefit} className={`flex items-center p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${formData.benefits.includes(benefit) ? 'border-primary bg-primary/10 glow-primary' : 'border-white/5 bg-white/5 hover:bg-white/10'}`}>
-                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.benefits.includes(benefit) ? 'bg-primary border-primary' : 'border-white/20'}`}>
+                        <label key={benefit} className={`flex items-center p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${formData.benefits.includes(benefit) ? 'border-primary bg-primary/10 glow-primary' : 'border-border bg-muted hover:bg-muted/80'}`}>
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.benefits.includes(benefit) ? 'bg-primary border-primary' : 'border-muted-foreground/20'}`}>
                             {formData.benefits.includes(benefit) && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                           </div>
                           <input 
@@ -339,7 +386,7 @@ export function CompanyNewJob() {
                             checked={formData.benefits.includes(benefit)}
                             onChange={() => toggleBenefit(benefit)}
                           />
-                          <span className={`ml-4 text-sm font-medium ${formData.benefits.includes(benefit) ? 'text-white' : 'text-gray-400'}`}>{benefit}</span>
+                          <span className={`ml-4 text-sm font-medium ${formData.benefits.includes(benefit) ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>{benefit}</span>
                         </label>
                       ))}
                     </div>
@@ -347,8 +394,8 @@ export function CompanyNewJob() {
 
                   <div>
                     <label className={labelClasses}>Data de Encerramento (Opcional)</label>
-                    <div className="relative max-w-xs">
-                      <Calendar className="absolute left-4 top-3.5 w-5 h-5 text-gray-500" />
+                     <div className="relative max-w-xs">
+                      <Calendar className="absolute left-4 top-3.5 w-5 h-5 text-muted-foreground" />
                       <input 
                         type="date" name="closingDate" value={formData.closingDate} onChange={handleInputChange}
                         className={`${inputClasses} pl-11`}
@@ -367,41 +414,41 @@ export function CompanyNewJob() {
                   exit={{ opacity: 0, y: -20 }}
                   className="space-y-10"
                 >
-                  <div className="flex items-center gap-3 mb-2">
+                   <div className="flex items-center gap-3 mb-2">
                     <div className="h-8 w-1 bg-primary rounded-full" />
-                    <h2 className="text-2xl font-bold text-white">Revisão e Publicação</h2>
+                    <h2 className="text-2xl font-bold text-foreground">Revisão e Publicação</h2>
                   </div>
                   
                   {/* Preview Card */}
                   <div className="relative group">
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-                    <div className="relative glass-panel rounded-3xl p-8 border-white/10 overflow-hidden">
+                     <div className="relative glass-panel rounded-3xl p-8 border-border overflow-hidden">
                       <div className="absolute top-0 right-0 bg-primary/20 text-primary text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 rounded-bl-2xl border-l border-b border-primary/20">
                         Visualização
                       </div>
                       <div className="flex flex-col md:flex-row items-start gap-6">
-                        <div className="w-20 h-20 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl border border-white/10 shrink-0">
+                        <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center text-primary font-bold text-2xl shadow-xl border border-border shrink-0">
                           TC
                         </div>
-                        <div className="flex-1">
-                          <h3 className="text-2xl font-bold text-white mb-1">{formData.title || 'Título da Vaga'}</h3>
-                          <p className="text-gray-400 text-sm mb-6 flex items-center gap-2">
+                         <div className="flex-1">
+                          <h3 className="text-2xl font-bold text-foreground mb-1">{formData.title || 'Título da Vaga'}</h3>
+                          <p className="text-muted-foreground text-sm mb-6 flex items-center gap-2">
                             <Building2 className="w-4 h-4" /> TechCorp Japan • <MapPin className="w-4 h-4" /> {formData.location || 'Localização'}
                           </p>
                           
                           <div className="flex flex-wrap gap-3 mb-6">
-                            <Badge variant="glass" className="bg-white/5 border-white/10 text-gray-300 px-3 py-1 text-xs">
+                            <Badge variant="glass" className="bg-white/5 border-white/10 text-muted-foreground px-3 py-1 text-xs">
                               <Briefcase className="w-3 h-3 mr-1.5" /> {formData.workMode || 'Modalidade'}
                             </Badge>
-                            <Badge variant="glass" className="bg-white/5 border-white/10 text-gray-300 px-3 py-1 text-xs">
+                            <Badge variant="glass" className="bg-white/5 border-white/10 text-muted-foreground px-3 py-1 text-xs">
                               <JapaneseYen className="w-3 h-3 mr-1.5" /> {formData.salaryTbd ? 'A combinar' : (formData.salaryMin ? `¥${formData.salaryMin} - ¥${formData.salaryMax}` : 'Salário')}
                             </Badge>
-                            <Badge variant="glass" className="bg-white/5 border-white/10 text-gray-300 px-3 py-1 text-xs">
+                            <Badge variant="glass" className="bg-white/5 border-white/10 text-muted-foreground px-3 py-1 text-xs">
                               <Tag className="w-3 h-3 mr-1.5" /> {formData.experienceLevel || 'Nível'}
                             </Badge>
                           </div>
 
-                          <div className="text-sm text-gray-400 line-clamp-3 leading-relaxed">
+                           <div className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
                             {formData.description || 'A descrição detalhada da vaga aparecerá aqui para os candidatos revisarem antes de você publicar.'}
                           </div>
                         </div>
@@ -409,19 +456,19 @@ export function CompanyNewJob() {
                     </div>
                   </div>
 
-                  {/* Sponsored Toggle */}
-                  <div className={`p-8 rounded-3xl border-2 transition-all duration-500 ${formData.isSponsored ? 'border-accent bg-accent/5 glow-accent' : 'border-white/5 bg-white/5'}`}>
+                   {/* Sponsored Toggle */}
+                  <div className={`p-8 rounded-3xl border-2 transition-all duration-500 ${formData.isSponsored ? 'border-accent bg-accent/5 glow-accent' : 'border-border bg-muted/30'}`}>
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-6">
                       <div className="flex items-start gap-5">
-                        <div className={`p-4 rounded-2xl ${formData.isSponsored ? 'bg-accent/20 text-accent' : 'bg-gray-800 text-gray-600'}`}>
+                        <div className={`p-4 rounded-2xl ${formData.isSponsored ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}>
                           <Star className="w-8 h-8" fill={formData.isSponsored ? "currentColor" : "none"} />
                         </div>
-                        <div>
-                          <h4 className="text-xl font-bold text-white flex items-center gap-3">
+                         <div>
+                          <h4 className="text-xl font-bold text-foreground flex items-center gap-3">
                             Vaga em Destaque
                             {formData.isSponsored && <Badge variant="default" className="bg-accent text-white border-none text-[10px] py-0.5">ATIVADO</Badge>}
                           </h4>
-                          <p className="text-sm text-gray-400 mt-2 max-w-md leading-relaxed">
+                          <p className="text-sm text-muted-foreground mt-2 max-w-md leading-relaxed">
                             Sua vaga aparecerá no topo das buscas e será enviada por e-mail para candidatos compatíveis. Aumente em até 5x o número de currículos recebidos.
                           </p>
                           <p className="text-lg font-bold text-accent mt-4">+ ¥15,000 / mês</p>
@@ -429,9 +476,18 @@ export function CompanyNewJob() {
                       </div>
                       <label className="flex items-center cursor-pointer mt-2">
                         <div className="relative">
-                          <input type="checkbox" name="isSponsored" checked={formData.isSponsored} onChange={handleInputChange} className="sr-only" />
-                          <div className={`block w-16 h-9 rounded-full transition-colors ${formData.isSponsored ? 'bg-accent' : 'bg-gray-700'}`}></div>
-                          <div className={`dot absolute left-1 top-1 bg-white w-7 h-7 rounded-full transition-transform ${formData.isSponsored ? 'transform translate-x-7' : ''}`}></div>
+                          <input 
+                            type="checkbox" 
+                            name="isSponsored" 
+                            checked={formData.isSponsored} 
+                            onChange={handleInputChange} 
+                            className="sr-only"
+                            role="switch"
+                            aria-checked={formData.isSponsored}
+                            aria-label="Ativar vaga patrocinada"
+                          />
+                           <div className={`block w-16 h-9 rounded-full transition-colors ${formData.isSponsored ? 'bg-accent' : 'bg-input'}`}></div>
+                           <div className={`dot absolute left-1 top-1 bg-white w-7 h-7 rounded-full transition-transform ${formData.isSponsored ? 'transform translate-x-7' : ''}`}></div>
                         </div>
                       </label>
                     </div>
@@ -442,13 +498,13 @@ export function CompanyNewJob() {
             </AnimatePresence>
           </div>
 
-          {/* Footer Actions */}
-          <div className="bg-white/5 px-8 py-6 border-t border-white/5 flex items-center justify-between">
+           {/* Footer Actions */}
+          <div className="bg-muted/50 px-8 py-6 border-t border-border flex items-center justify-between">
             {currentStep > 1 ? (
               <Button 
                 variant="ghost" 
                 onClick={prevStep}
-                className="text-gray-400 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" /> Voltar
               </Button>

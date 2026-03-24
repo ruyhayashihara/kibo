@@ -11,8 +11,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("theme")
-    if (saved === "light" || saved === "dark") return saved
+    try {
+      const saved = localStorage.getItem("theme")
+      if (saved === "light" || saved === "dark") return saved
+    } catch {
+      // localStorage may be unavailable in private browsing or storage is full
+    }
     return "dark" // Default to dark as requested by the "Stitch" theme
   })
 
@@ -20,7 +24,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = window.document.documentElement
     root.classList.remove("light", "dark")
     root.classList.add(theme)
-    localStorage.setItem("theme", theme)
+    try {
+      localStorage.setItem("theme", theme)
+    } catch {
+      // localStorage may be unavailable in private browsing or storage is full
+    }
   }, [theme])
 
   const toggleTheme = () => {

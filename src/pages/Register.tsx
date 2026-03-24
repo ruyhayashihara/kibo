@@ -1,12 +1,83 @@
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { Briefcase, User, Building2, Check } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
+import { useAuth } from "../context/AuthContext"
+import { supabase } from "../lib/supabase"
+import { useNavigate, useLocation } from "react-router-dom"
 
 export function Register() {
+  const [isLogin, setIsLogin] = useState(false)
   const [userType, setUserType] = useState<"candidate" | "company" | null>(null)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  
+  const { user, signIn } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  
+  const from = (location.state as any)?.from?.pathname || "/"
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate(from, { replace: true })
+    }
+  }, [user, navigate, from])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const { data, error } = await signIn(email, password)
+      if (error) throw error
+      
+      if (data?.user) {
+        navigate(from, { replace: true })
+      }
+    } catch (error: any) {
+      setError(error.message || "Erro ao entrar. Verifique suas credenciais.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    try {
+      // If it's a login attempt, use the new handleLogin function
+      if (isLogin) {
+        await handleLogin(e); // Call handleLogin for login
+      } else {
+        // Otherwise, proceed with sign-up
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              role: userType,
+              is_admin: email.endsWith('@kibojobs.com') // Demo logic for admin
+            }
+          }
+        })
+        if (error) throw error
+        alert("Cadastro realizado! Verifique seu email.")
+      }
+    } catch (err: any) {
+      setError(err.message || "Ocorreu um erro na autenticação")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 flex justify-center min-h-[calc(100vh-4rem)] items-center">
@@ -14,179 +85,264 @@ export function Register() {
         {/* Background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-md bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
         
-        <div className="glass-panel rounded-3xl p-8 md:p-12 relative z-10 border-white/10">
+        <div className="glass-panel rounded-3xl p-8 md:p-12 relative z-10 border-border">
           <div className="text-center mb-10">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent mb-6 glow-primary">
               <Briefcase className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Crie sua conta</h1>
-            <p className="text-gray-400">Escolha o tipo de conta para começar.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
+              {isLogin ? "Bem-vindo de volta" : "Crie sua conta"}
+            </h1>
+            <p className="text-muted-foreground">
+              {isLogin ? "Entre com suas credenciais para continuar." : "Escolha o tipo de conta para começar."}
+            </p>
           </div>
 
-          {/* User Type Selector */}
-          <div className="grid grid-cols-2 gap-4 mb-10">
-            <button
-              onClick={() => setUserType("candidate")}
-              className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all ${
-                userType === "candidate"
-                  ? "border-primary bg-primary/10"
-                  : "border-white/5 bg-white/5 hover:bg-white/10"
-              }`}
-            >
-              <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${userType === "candidate" ? "bg-primary text-white" : "bg-white/10 text-gray-400"}`}>
-                <User className="h-6 w-6" />
-              </div>
-              <span className={`font-semibold ${userType === "candidate" ? "text-white" : "text-gray-400"}`}>Sou candidato</span>
-            </button>
+          {error && (
+            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
+              {error}
+            </div>
+          )}
 
-            <button
-              onClick={() => setUserType("company")}
-              className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all ${
-                userType === "company"
-                  ? "border-primary bg-primary/10"
-                  : "border-white/5 bg-white/5 hover:bg-white/10"
-              }`}
-            >
-              <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${userType === "company" ? "bg-primary text-white" : "bg-white/10 text-gray-400"}`}>
-                <Building2 className="h-6 w-6" />
-              </div>
-              <span className={`font-semibold ${userType === "company" ? "text-white" : "text-gray-400"}`}>Sou empresa</span>
-            </button>
-          </div>
+          {!isLogin && (
+            <div className="grid grid-cols-2 gap-4 mb-10">
+              <button
+                onClick={() => setUserType("candidate")}
+                className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all ${
+                  userType === "candidate"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-muted hover:bg-muted/80"
+                }`}
+              >
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${userType === "candidate" ? "bg-primary text-white" : "bg-background border border-border text-muted-foreground"}`}>
+                  <User className="h-6 w-6" />
+                </div>
+                <span className={`font-semibold ${userType === "candidate" ? "text-foreground" : "text-muted-foreground"}`}>Sou candidato</span>
+              </button>
 
-          {userType && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-              {userType === "candidate" ? (
+              <button
+                onClick={() => setUserType("company")}
+                className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all ${
+                  userType === "company"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-muted hover:bg-muted/80"
+                }`}
+              >
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${userType === "company" ? "bg-primary text-white" : "bg-background border border-border text-muted-foreground"}`}>
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <span className={`font-semibold ${userType === "company" ? "text-foreground" : "text-muted-foreground"}`}>Sou empresa</span>
+              </button>
+            </div>
+          )}
+
+          {(isLogin || userType) && (
+            <form onSubmit={handleAuth} className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+              {isLogin ? (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Nome completo</label>
-                      <Input placeholder="Ex: João da Silva" className="bg-black/20 border-white/10" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Email</label>
-                      <Input type="email" placeholder="joao@exemplo.com" className="bg-black/20 border-white/10" />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground/80">Email</label>
+                    <Input 
+                      type="email" 
+                      placeholder="seu@email.com" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Senha</label>
-                      <Input type="password" placeholder="••••••••" className="bg-black/20 border-white/10" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Confirmar senha</label>
-                      <Input type="password" placeholder="••••••••" className="bg-black/20 border-white/10" />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground/80">Senha</label>
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Área de interesse</label>
-                      <select defaultValue="" className="flex h-10 w-full rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
-                        <option value="" disabled>Selecione...</option>
-                        <option value="it" className="bg-gray-900">TI & Software</option>
-                        <option value="engineering" className="bg-gray-900">Engenharia</option>
-                        <option value="marketing" className="bg-gray-900">Vendas & Marketing</option>
-                        <option value="education" className="bg-gray-900">Educação</option>
-                        <option value="other" className="bg-gray-900">Outros</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Estado</label>
-                      <Input placeholder="Ex: Osaka" className="bg-black/20 border-white/10" />
-                    </div>
+                  
+                  {/* Demo Admin Login Button */}
+                  <div className="pt-2">
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      className="w-full border-primary/30 hover:bg-primary/10 text-primary text-xs h-8"
+                      onClick={() => {
+                        setEmail("admin@kibojobs.com");
+                        setPassword("admin123");
+                      }}
+                    >
+                      Preencher credenciais de Admin (Demo)
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                      Use estas credenciais para testar a proteção da rota /admin.
+                    </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Nome da empresa</label>
-                      <Input placeholder="Ex: Tech Solutions" className="bg-black/20 border-white/10" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Email corporativo</label>
-                      <Input type="email" placeholder="contato@empresa.com" className="bg-black/20 border-white/10" />
-                    </div>
-                  </div>
+                  {userType === "candidate" ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Nome completo</label>
+                          <Input placeholder="Ex: João da Silva" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Email</label>
+                          <Input 
+                            type="email" 
+                            placeholder="joao@exemplo.com" 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Senha</label>
-                      <Input type="password" placeholder="••••••••" className="bg-black/20 border-white/10" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Confirmar senha</label>
-                      <Input type="password" placeholder="••••••••" className="bg-black/20 border-white/10" />
-                    </div>
-                  </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Senha</label>
+                          <Input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Confirmar senha</label>
+                          <Input type="password" placeholder="••••••••" required />
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Setor</label>
-                      <select defaultValue="" className="flex h-10 w-full rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
-                        <option value="" disabled>Selecione...</option>
-                        <option value="it" className="bg-gray-900">Tecnologia</option>
-                        <option value="industry" className="bg-gray-900">Indústria</option>
-                        <option value="services" className="bg-gray-900">Serviços</option>
-                        <option value="commerce" className="bg-gray-900">Comércio</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Tamanho da empresa</label>
-                      <select defaultValue="" className="flex h-10 w-full rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
-                        <option value="" disabled>Selecione...</option>
-                        <option value="1-10" className="bg-gray-900">1-10 funcionários</option>
-                        <option value="11-50" className="bg-gray-900">11-50 funcionários</option>
-                        <option value="51-200" className="bg-gray-900">51-200 funcionários</option>
-                        <option value="201+" className="bg-gray-900">Mais de 200</option>
-                      </select>
-                    </div>
-                  </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Área de interesse</label>
+                          <select defaultValue="" className="flex h-10 w-full rounded-full border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
+                            <option value="" disabled className="bg-background">Selecione...</option>
+                            <option value="it" className="bg-background">TI & Software</option>
+                            <option value="engineering" className="bg-background">Engenharia</option>
+                            <option value="marketing" className="bg-background">Vendas & Marketing</option>
+                            <option value="education" className="bg-background">Educação</option>
+                            <option value="other" className="bg-background">Outros</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Estado</label>
+                          <Input placeholder="Ex: Osaka" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Nome da empresa</label>
+                          <Input placeholder="Ex: Tech Solutions" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Email corporativo</label>
+                          <Input 
+                            type="email" 
+                            placeholder="contato@empresa.com" 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Cidade</label>
-                      <Input placeholder="Ex: Tóquio" className="bg-black/20 border-white/10" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-300">Telefone</label>
-                      <Input placeholder="Ex: +81 00-0000-0000" className="bg-black/20 border-white/10" />
-                    </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Senha</label>
+                          <Input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Confirmar senha</label>
+                          <Input type="password" placeholder="••••••••" required />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Setor</label>
+                          <select defaultValue="" className="flex h-10 w-full rounded-full border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
+                            <option value="" disabled className="bg-background">Selecione...</option>
+                            <option value="it" className="bg-background">Tecnologia</option>
+                            <option value="industry" className="bg-background">Indústria</option>
+                            <option value="services" className="bg-background">Serviços</option>
+                            <option value="commerce" className="bg-background">Comércio</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Tamanho da empresa</label>
+                          <select defaultValue="" className="flex h-10 w-full rounded-full border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
+                            <option value="" disabled className="bg-background">Selecione...</option>
+                            <option value="1-10" className="bg-background">1-10 funcionários</option>
+                            <option value="11-50" className="bg-background">11-50 funcionários</option>
+                            <option value="51-200" className="bg-background">51-200 funcionários</option>
+                            <option value="201+" className="bg-background">Mais de 200</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Cidade</label>
+                          <Input placeholder="Ex: Tóquio" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground/80">Telefone</label>
+                          <Input placeholder="Ex: +81 00-0000-0000" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex items-start space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAgreedToTerms(!agreedToTerms)}
+                      className={`mt-0.5 h-5 w-5 shrink-0 rounded border border-border transition-colors flex items-center justify-center ${
+                        agreedToTerms ? "bg-primary border-primary" : "bg-muted"
+                      }`}
+                    >
+                      {agreedToTerms && <Check className="h-3.5 w-3.5 text-white" />}
+                    </button>
+                    <label className="text-sm text-muted-foreground leading-tight cursor-pointer" onClick={() => setAgreedToTerms(!agreedToTerms)}>
+                      Concordo com os <Link to="/termos" className="text-primary hover:underline">Termos de uso</Link> e <Link to="/privacidade" className="text-primary hover:underline">Política de privacidade</Link>
+                    </label>
                   </div>
                 </>
               )}
 
-              <div className="flex items-start space-x-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAgreedToTerms(!agreedToTerms)}
-                  className={`mt-0.5 h-5 w-5 shrink-0 rounded border transition-colors flex items-center justify-center ${
-                    agreedToTerms ? "bg-primary border-primary" : "border-white/20 bg-black/20"
-                  }`}
-                >
-                  {agreedToTerms && <Check className="h-3.5 w-3.5 text-white" />}
-                </button>
-                <label className="text-sm text-gray-400 leading-tight cursor-pointer" onClick={() => setAgreedToTerms(!agreedToTerms)}>
-                  Concordo com os <Link to="/termos" className="text-primary hover:underline">Termos de uso</Link> e <Link to="/privacidade" className="text-primary hover:underline">Política de privacidade</Link>
-                </label>
-              </div>
-
-              <Button variant="gradient" className="w-full rounded-full h-12 text-base font-semibold mt-4">
-                Criar conta
+              <Button 
+                variant="gradient" 
+                className="w-full rounded-full h-12 text-base font-semibold mt-4"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Processando..." : (isLogin ? "Entrar" : "Criar conta")}
               </Button>
 
               <div className="relative my-8">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10"></div>
+                  <div className="w-full border-t border-border"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-background px-4 text-gray-500">ou continue com</span>
+                  <span className="bg-background px-4 text-muted-foreground">ou continue com</span>
                 </div>
               </div>
 
-              <Button variant="outline" className="w-full rounded-full h-12 bg-white/5 border-white/10 hover:bg-white/10">
+              <Button variant="outline" className="w-full rounded-full h-12" type="button">
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -209,10 +365,17 @@ export function Register() {
                 Google
               </Button>
               
-              <p className="text-center text-sm text-gray-400 mt-6">
-                Já tem uma conta? <Link to="/login" className="text-primary hover:underline font-medium">Entrar</Link>
+              <p className="text-center text-sm text-muted-foreground mt-6">
+                {isLogin ? "Ainda não tem uma conta?" : "Já tem uma conta?"} {" "}
+                <button 
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-primary hover:underline font-medium"
+                >
+                  {isLogin ? "Criar conta" : "Entrar"}
+                </button>
               </p>
-            </div>
+            </form>
           )}
         </div>
       </div>

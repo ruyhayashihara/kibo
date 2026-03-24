@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, MapPin, Briefcase, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   JobCard, CompanyCard, FilterGroup, LanguageSwitcher,
   AdSlot, ProfileProgress
@@ -20,9 +21,9 @@ export default function Screen1Homepage() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-8 font-medium text-slate-400">
-            <a href="#" className="text-blue-400">Vagas</a>
-            <a href="#" className="hover:text-white transition-colors">Empresas</a>
-            <a href="#" className="hover:text-white transition-colors">Salários</a>
+            <Link to="/vagas" className="text-blue-400 hover:text-white transition-colors">Vagas</Link>
+            <Link to="/empresas" className="hover:text-white transition-colors">Empresas</Link>
+            <Link to="/salarios" className="hover:text-white transition-colors">Salários</Link>
           </nav>
           <div className="flex items-center gap-6">
             <LanguageSwitcher />

@@ -2,9 +2,11 @@ import { Link } from "react-router-dom"
 import { Button } from "../ui/button"
 import { Briefcase, Sun, Moon } from "lucide-react"
 import { useTheme } from "../../context/ThemeContext"
+import { useAuth } from "../../context/AuthContext"
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme()
+  const { user, signOut } = useAuth()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-xl">
@@ -22,7 +24,6 @@ export function Navbar() {
             <Link to="/vagas" className="hover:text-foreground transition-colors">Vagas</Link>
             <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
             <Link to="/empresa/dashboard" className="hover:text-foreground transition-colors">Empresas</Link>
-            <Link to="/admin" className="hover:text-foreground transition-colors">Admin</Link>
           </nav>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
@@ -35,12 +36,29 @@ export function Navbar() {
           >
             {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </Button>
-          <Button variant="ghost" asChild className="hidden sm:inline-flex rounded-full text-muted-foreground hover:text-foreground">
-            <Link to="/login">Entrar</Link>
-          </Button>
-          <Button variant="gradient" asChild className="rounded-full">
-            <Link to="/cadastro">Cadastrar</Link>
-          </Button>
+          {user ? (
+            <>
+              <span className="hidden lg:inline-block text-xs text-muted-foreground mr-2 truncate max-w-[150px]">
+                {user.email}
+              </span>
+              <Button 
+                variant="ghost" 
+                onClick={() => signOut()}
+                className="rounded-full text-muted-foreground hover:text-red-500"
+              >
+                Sair
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" asChild className="hidden sm:inline-flex rounded-full text-muted-foreground hover:text-foreground">
+                <Link to="/login">Entrar</Link>
+              </Button>
+              <Button variant="gradient" asChild className="rounded-full">
+                <Link to="/cadastro">Cadastrar</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>

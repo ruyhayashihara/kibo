@@ -6,17 +6,17 @@
   --foreground: #020617;
   --card: #ffffff;
   --card-hover: #f8fafc;
-  --card-border: #e2e8f0;
-  --primary: #2563eb; /* Slightly deeper blue for better contrast in light mode */
+  --card-border: #cbd5e1;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
   --muted: #f8fafc;
-  --muted-foreground: #64748b;
-  --accent: #db2777; /* Slightly deeper pink for better contrast */
+  --muted-foreground: #475569; /* Darker for better contrast */
+  --accent: #db2777;
   --accent-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #f1f5f9;
+  --border: #cbd5e1; /* More visible than e2e8f0 */
+  --input: #ffffff;
   --ring: rgba(37, 99, 235, 0.2);
 }
 
@@ -84,8 +84,8 @@
   }
 
   .light body {
-    background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-                      radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+    background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.05) 0%, transparent 50%),
+                      radial-gradient(circle at 100% 100%, rgba(219, 39, 119, 0.05) 0%, transparent 50%);
     background-attachment: fixed;
   }
 }
@@ -101,6 +101,10 @@
   }
   
   .glow-text {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0);
+  }
+  
+  .dark .glow-text {
     text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   }
   
