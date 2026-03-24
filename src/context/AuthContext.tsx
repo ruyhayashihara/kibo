@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -50,22 +50,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   useEffect(() => {
+    // Skip Supabase auth if not configured
+    if (!isSupabaseConfigured) {
+      console.log('[KiboJobs] Running without Supabase - using demo mode');
+      setLoading(false);
+      return;
+    }
+
     // Check active sessions and sets the user
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        // Simple admin check: check user metadata or a specific email/domain
-        // In a real app, this should be done via a 'role' column in the profiles table
-        const adminStatus = currentUser.app_metadata?.role === 'admin' || 
-                           currentUser.user_metadata?.is_admin === true ||
-                           currentUser.email?.endsWith('@kibojobs.com'); // Fallback for demo
-        setIsAdmin(adminStatus);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          const adminStatus = currentUser.app_metadata?.role === 'admin' || 
+                             currentUser.user_metadata?.is_admin === true ||
+                             currentUser.email?.endsWith('@kibojobs.com');
+          setIsAdmin(adminStatus);
+        }
+      } catch (error) {
+        console.error('[KiboJobs] Error checking session:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     checkUser();
