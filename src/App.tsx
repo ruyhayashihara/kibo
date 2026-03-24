@@ -18,6 +18,7 @@ import { AdminDashboard } from "./pages/AdminDashboard"
 import { AuthProvider } from "./context/AuthContext"
 import { ProtectedRoute } from "./components/auth/ProtectedRoute"
 import { CompanyProtectedRoute } from "./components/auth/CompanyProtectedRoute"
+import { CandidateProtectedRoute } from "./components/auth/CandidateProtectedRoute"
 
 export default function App() {
   return (
@@ -31,7 +32,14 @@ export default function App() {
             <Route path="empresas" element={<Companies />} />
             <Route path="cadastro" element={<Register />} />
             <Route path="login" element={<Login />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route 
+              path="dashboard" 
+              element={
+                <CandidateProtectedRoute>
+                  <Dashboard />
+                </CandidateProtectedRoute>
+              } 
+            />
             <Route 
               path="empresa/dashboard" 
               element={

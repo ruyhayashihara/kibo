@@ -7,6 +7,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isCompany: boolean;
+  isCandidate: boolean;
   signIn: (email: string, password: string) => Promise<{ data: any, error: any }>;
   signOut: () => Promise<void>;
 }
@@ -18,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCompany, setIsCompany] = useState(false);
+  const [isCandidate, setIsCandidate] = useState(false);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -34,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(mockUser);
         setIsAdmin(true);
         setIsCompany(false);
+        setIsCandidate(false);
         setLoading(false);
         return { data: { user: mockUser }, error: null };
       }
@@ -75,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                currentUser.user_metadata?.account_type === 'company';
           setIsAdmin(adminStatus);
           setIsCompany(companyStatus);
+          setIsCandidate(!adminStatus && !companyStatus);
         }
       } catch (error) {
         console.error('[KiboJobs] Error checking session:', error);
@@ -98,9 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                              currentUser.user_metadata?.account_type === 'company';
         setIsAdmin(adminStatus);
         setIsCompany(companyStatus);
+        setIsCandidate(!adminStatus && !companyStatus);
       } else {
         setIsAdmin(false);
         setIsCompany(false);
+        setIsCandidate(false);
       }
       
       setLoading(false);
@@ -114,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, isCompany, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isCompany, isCandidate, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
