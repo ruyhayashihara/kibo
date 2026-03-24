@@ -1,6 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* Fallback styles in case Tailwind fails to load */
+html, body, #root {
+  min-height: 100vh;
+}
+
+body {
+  background-color: #080B1A;
+  color: #ffffff;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #020617;
@@ -78,12 +89,14 @@
   }
   
   .dark body {
+    background-color: #080B1A;
     background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
                       radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
     background-attachment: fixed;
   }
 
   .light body {
+    background-color: #ffffff;
     background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.05) 0%, transparent 50%),
                       radial-gradient(circle at 100% 100%, rgba(219, 39, 119, 0.05) 0%, transparent 50%);
     background-attachment: fixed;
