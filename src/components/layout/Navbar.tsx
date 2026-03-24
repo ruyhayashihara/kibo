@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom"
 import { Button } from "../ui/button"
-import { Briefcase, Sun, Moon } from "lucide-react"
+import { Briefcase, Sun, Moon, Shield } from "lucide-react"
 import { useTheme } from "../../context/ThemeContext"
 import { useAuth } from "../../context/AuthContext"
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme()
-  const { user, signOut } = useAuth()
+  const { user, isAdmin, signOut } = useAuth()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-xl">
@@ -24,6 +24,12 @@ export function Navbar() {
             <Link to="/vagas" className="hover:text-foreground transition-colors">Vagas</Link>
             <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
             <Link to="/empresa/dashboard" className="hover:text-foreground transition-colors">Empresas</Link>
+            {isAdmin && (
+              <Link to="/admin" className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-semibold">
+                <Shield className="h-4 w-4" />
+                Admin Dashboard
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
@@ -38,6 +44,14 @@ export function Navbar() {
           </Button>
           {user ? (
             <>
+              {isAdmin && (
+                <Button variant="gradient" asChild className="rounded-full hidden sm:inline-flex">
+                  <Link to="/admin">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Admin
+                  </Link>
+                </Button>
+              )}
               <span className="hidden lg:inline-block text-xs text-muted-foreground mr-2 truncate max-w-[150px]">
                 {user.email}
               </span>
