@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isCompany: boolean;
   signIn: (email: string, password: string) => Promise<{ data: any, error: any }>;
   signOut: () => Promise<void>;
 }
@@ -16,12 +17,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCompany, setIsCompany] = useState(false);
 
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true)
       
-      // Demo bypass for testing
+      // Demo bypass for testing admin
       if (email === "admin@kibojobs.com" && password === "admin123") {
         const mockUser = {
           id: "demo-admin-id",
@@ -31,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } as any;
         setUser(mockUser);
         setIsAdmin(true);
+        setIsCompany(false);
         setLoading(false);
         return { data: { user: mockUser }, error: null };
       }
@@ -68,7 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const adminStatus = currentUser.app_metadata?.role === 'admin' || 
                              currentUser.user_metadata?.is_admin === true ||
                              currentUser.email?.endsWith('@kibojobs.com');
+          const companyStatus = currentUser.app_metadata?.role === 'company' || 
+                               currentUser.user_metadata?.account_type === 'company';
           setIsAdmin(adminStatus);
+          setIsCompany(companyStatus);
         }
       } catch (error) {
         console.error('[KiboJobs] Error checking session:', error);
@@ -88,9 +94,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const adminStatus = currentUser.app_metadata?.role === 'admin' || 
                            currentUser.user_metadata?.is_admin === true ||
                            currentUser.email?.endsWith('@kibojobs.com');
+        const companyStatus = currentUser.app_metadata?.role === 'company' || 
+                             currentUser.user_metadata?.account_type === 'company';
         setIsAdmin(adminStatus);
+        setIsCompany(companyStatus);
       } else {
         setIsAdmin(false);
+        setIsCompany(false);
       }
       
       setLoading(false);
@@ -104,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isCompany, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

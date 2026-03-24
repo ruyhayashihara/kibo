@@ -11,11 +11,13 @@ import { JobDetail } from "./pages/JobDetail"
 import { Register } from "./pages/Register"
 import { Login } from "./pages/Login"
 import { Dashboard } from "./pages/Dashboard"
+import { Companies } from "./pages/Companies"
 import { CompanyDashboard } from "./pages/CompanyDashboard"
 import { CompanyNewJob } from "./pages/CompanyNewJob"
 import { AdminDashboard } from "./pages/AdminDashboard"
 import { AuthProvider } from "./context/AuthContext"
 import { ProtectedRoute } from "./components/auth/ProtectedRoute"
+import { CompanyProtectedRoute } from "./components/auth/CompanyProtectedRoute"
 
 export default function App() {
   return (
@@ -26,11 +28,26 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="vagas" element={<Jobs />} />
             <Route path="vagas/:id" element={<JobDetail />} />
+            <Route path="empresas" element={<Companies />} />
             <Route path="cadastro" element={<Register />} />
             <Route path="login" element={<Login />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="empresa/dashboard" element={<CompanyDashboard />} />
-            <Route path="empresa/vagas/nova" element={<CompanyNewJob />} />
+            <Route 
+              path="empresa/dashboard" 
+              element={
+                <CompanyProtectedRoute>
+                  <CompanyDashboard />
+                </CompanyProtectedRoute>
+              } 
+            />
+            <Route 
+              path="empresa/vagas/nova" 
+              element={
+                <CompanyProtectedRoute>
+                  <CompanyNewJob />
+                </CompanyProtectedRoute>
+              } 
+            />
             <Route 
               path="admin" 
               element={

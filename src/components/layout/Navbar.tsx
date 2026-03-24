@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext"
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme()
-  const { user, isAdmin, signOut } = useAuth()
+  const { user, isAdmin, isCompany, signOut } = useAuth()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-xl">
@@ -22,8 +22,11 @@ export function Navbar() {
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
             <Link to="/vagas" className="hover:text-foreground transition-colors">Vagas</Link>
+            <Link to="/empresas" className="hover:text-foreground transition-colors">Empresas</Link>
             <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
-            <Link to="/empresa/dashboard" className="hover:text-foreground transition-colors">Empresas</Link>
+            {isCompany && (
+              <Link to="/empresa/dashboard" className="hover:text-foreground transition-colors">Painel Empresa</Link>
+            )}
             {isAdmin && (
               <Link to="/admin" className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-semibold">
                 <Shield className="h-4 w-4" />
