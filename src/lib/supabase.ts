@@ -8,7 +8,7 @@ const isSupabaseConfigured = supabaseUrl && supabaseAnonKey &&
   supabaseAnonKey !== 'your-anon-key'
 
 if (!isSupabaseConfigured) {
-  console.warn('[KiboJobs] Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel Environment Variables.')
+  console.warn('[KiboJobs] Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the Replit Secrets panel.')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
