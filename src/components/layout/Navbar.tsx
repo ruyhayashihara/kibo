@@ -11,8 +11,9 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
+        {/* Left: Logo + nav links */}
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link to="/" className="flex items-center gap-2 shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow-primary">
               <Briefcase className="h-5 w-5 text-white" />
             </div>
@@ -20,23 +21,44 @@ export function Navbar() {
               Kibo<span className="text-primary">Jobs</span>
             </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <Link to="/vagas" className="hover:text-foreground transition-colors">Vagas</Link>
-            <Link to="/empresas" className="hover:text-foreground transition-colors">Empresas</Link>
+
+          {/* Nav links — always visible, condensed on mobile */}
+          <nav className="flex items-center gap-1 sm:gap-6 text-sm font-medium text-muted-foreground">
+            <Link
+              to="/vagas"
+              className="px-2 py-1 rounded-md hover:text-foreground hover:bg-muted transition-colors"
+            >
+              Vagas
+            </Link>
+            <Link
+              to="/empresas"
+              className="px-2 py-1 rounded-md hover:text-foreground hover:bg-muted transition-colors"
+            >
+              Empresas
+            </Link>
             {isCandidate && (
-              <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+              <Link to="/dashboard" className="hidden sm:block hover:text-foreground transition-colors">
+                Dashboard
+              </Link>
             )}
             {isCompany && (
-              <Link to="/empresa/dashboard" className="hover:text-foreground transition-colors">Painel Empresa</Link>
+              <Link to="/empresa/dashboard" className="hidden sm:block hover:text-foreground transition-colors">
+                Painel Empresa
+              </Link>
             )}
             {isAdmin && (
-              <Link to="/admin" className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-semibold">
+              <Link
+                to="/admin"
+                className="hidden sm:flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-semibold"
+              >
                 <Shield className="h-4 w-4" />
                 Admin Dashboard
               </Link>
             )}
           </nav>
         </div>
+
+        {/* Right: actions */}
         <div className="flex items-center gap-2 sm:gap-4">
           <Button
             variant="ghost"
@@ -47,6 +69,7 @@ export function Navbar() {
           >
             {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </Button>
+
           {user ? (
             <>
               {isAdmin && (
@@ -60,8 +83,8 @@ export function Navbar() {
               <span className="hidden lg:inline-block text-xs text-muted-foreground mr-2 truncate max-w-[150px]">
                 {user.email}
               </span>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => signOut()}
                 className="rounded-full text-muted-foreground hover:text-red-500"
               >
