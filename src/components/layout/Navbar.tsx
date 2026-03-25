@@ -93,7 +93,7 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Button variant="ghost" asChild className="hidden sm:inline-flex rounded-full text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" asChild className="rounded-full text-muted-foreground hover:text-foreground">
                 <Link to="/login">Entrar</Link>
               </Button>
               <Button variant="gradient" asChild className="rounded-full">
