@@ -32,14 +32,20 @@ interface JobWithCompany {
 export function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const JOBS_PER_PAGE = 10
+
   const [allJobs, setAllJobs] = useState<JobWithCompany[]>([])
   const [jobs, setJobs] = useState<JobWithCompany[]>([])
   const [loading, setLoading] = useState(true)
   const [searchInput, setSearchInput] = useState(searchParams.get("q") || "")
   const [locationInput, setLocationInput] = useState(searchParams.get("location") || "")
+  const [currentPage, setCurrentPage] = useState(1)
 
   const activeQuery = searchParams.get("q") || ""
   const activeLocation = searchParams.get("location") || ""
+
+  const totalPages = Math.max(1, Math.ceil(jobs.length / JOBS_PER_PAGE))
+  const pagedJobs = jobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE)
 
   useEffect(() => {
     async function fetchJobs() {
@@ -84,11 +90,27 @@ export function Jobs() {
     )
   }, [activeQuery, allJobs])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeQuery, activeLocation])
+
   const handleSearch = () => {
     const params: Record<string, string> = {}
     if (searchInput.trim()) params.q = searchInput.trim()
     if (locationInput) params.location = locationInput
     setSearchParams(params)
+  }
+
+  const getPageNumbers = (): (number | "...")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+    const pages: (number | "...")[] = [1]
+    if (currentPage > 3) pages.push("...")
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      pages.push(i)
+    }
+    if (currentPage < totalPages - 2) pages.push("...")
+    pages.push(totalPages)
+    return pages
   }
 
   const formatSalary = (min: number | null, max: number | null) => {
@@ -314,8 +336,8 @@ export function Jobs() {
                   </Card>
                 ))}
               </>
-            ) : jobs.length > 0 ? (
-              jobs.map((job) => (
+            ) : pagedJobs.length > 0 ? (
+              pagedJobs.map((job) => (
                 <Card key={job.id} className={`glass-panel-hover flex flex-col sm:flex-row gap-6 p-6 transition-all cursor-pointer border-border ${job.is_featured ? 'border-primary/30 glow-primary/10 bg-primary/5' : ''}`}>
                   {job.companies?.logo_url ? (
                     <img 
@@ -397,19 +419,45 @@ export function Jobs() {
           </div>
           
           {/* Pagination */}
-          <div className="flex items-center justify-center gap-2 mt-10">
-            <Button variant="outline" size="icon" className="rounded-full w-10 h-10 border-white/10" disabled>
-              <ChevronDown className="h-4 w-4 rotate-90" />
-            </Button>
-            <Button variant="default" size="icon" className="rounded-full w-10 h-10">1</Button>
-            <Button variant="ghost" size="icon" className="rounded-full w-10 h-10">2</Button>
-            <Button variant="ghost" size="icon" className="rounded-full w-10 h-10">3</Button>
-            <span className="text-gray-500">...</span>
-            <Button variant="ghost" size="icon" className="rounded-full w-10 h-10">12</Button>
-            <Button variant="outline" size="icon" className="rounded-full w-10 h-10 border-white/10">
-              <ChevronDown className="h-4 w-4 -rotate-90" />
-            </Button>
-          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-10 flex-wrap">
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full w-10 h-10"
+                disabled={currentPage === 1}
+                onClick={() => { setCurrentPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              >
+                <ChevronDown className="h-4 w-4 rotate-90" />
+              </Button>
+
+              {getPageNumbers().map((page, idx) =>
+                page === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="text-muted-foreground px-1">…</span>
+                ) : (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "ghost"}
+                    size="icon"
+                    className="rounded-full w-10 h-10"
+                    onClick={() => { setCurrentPage(page as number); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                  >
+                    {page}
+                  </Button>
+                )
+              )}
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full w-10 h-10"
+                disabled={currentPage === totalPages}
+                onClick={() => { setCurrentPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              >
+                <ChevronDown className="h-4 w-4 -rotate-90" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
