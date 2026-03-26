@@ -103,8 +103,8 @@ export function Dashboard() {
           <div className="glass-panel rounded-2xl p-6 border-border sticky top-24">
             {/* User Profile Summary */}
             <div className="flex flex-col items-center text-center mb-8">
-              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary to-accent p-1 mb-4">
-                <div className="h-full w-full rounded-full bg-muted flex items-center justify-center overflow-hidden">
+              <div className="h-20 w-20 rounded-none bg-primary p-1 mb-4 shadow-sm">
+                <div className="h-full w-full rounded-none bg-muted flex items-center justify-center overflow-hidden">
                   <img 
                     src="https://picsum.photos/seed/avatar/200/200" 
                     alt="Avatar" 
@@ -196,7 +196,7 @@ export function Dashboard() {
           {/* Quick Stats Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
-              <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
+              <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
                 <Bookmark className="h-6 w-6" />
               </div>
               <div>
@@ -243,8 +243,8 @@ export function Dashboard() {
                     <span className="text-primary font-medium">60% Concluído</span>
                     <span className="text-muted-foreground">Faltam 2 etapas</span>
                   </div>
-                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: "60%" }} />
+                  <div className="h-2 w-full bg-muted rounded-none overflow-hidden">
+                    <div className="h-full bg-primary rounded-none" style={{ width: "60%" }} />
                   </div>
                 </div>
               </div>
@@ -282,7 +282,7 @@ export function Dashboard() {
               {savedJobs.length > 0 ? (
                 savedJobs.map((job) => (
                   <div key={job.id} className="glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center transition-all hover:bg-muted">
-                    <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 border border-border flex items-center justify-center text-xl font-bold text-primary shrink-0">
+                    <div className="h-12 w-12 rounded-none bg-primary/10 border border-border flex items-center justify-center text-xl font-bold text-primary shrink-0">
                       {job.logo}
                     </div>
                     

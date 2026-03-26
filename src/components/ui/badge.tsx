@@ -17,7 +17,7 @@ const badgeVariants = cva(
         glass: "border-border bg-card text-foreground backdrop-blur-sm",
         success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
         n1: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-        n2: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
+        n2: "bg-primary/10 text-primary border border-primary/20",
         n3: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20",
         n4: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20",
         n5: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border border-gray-500/20",

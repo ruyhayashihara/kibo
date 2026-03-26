@@ -81,18 +81,16 @@ export function Home() {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
         
         <div className="container relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <Badge variant="glass" className="mb-6 py-1.5 px-4 text-sm border-primary/30 text-primary">
-            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <Badge variant="outline" className="mb-6 py-1.5 px-4 text-sm border-primary/30 text-primary">
+            <span className="mr-2 inline-block h-2 w-2 rounded-none bg-primary animate-pulse" />
             Mais de 2.500 vagas abertas hoje
           </Badge>
           
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 glow-text text-foreground">
-            Encontre sua <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">vaga ideal</span><br /> no Japão
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 text-foreground">
+            Encontre sua <span className="text-primary font-black">vaga ideal</span><br /> no Japão
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12">
@@ -101,7 +99,7 @@ export function Home() {
           </p>
           
           {/* Search Bar */}
-          <div className="max-w-4xl mx-auto glass-panel p-2 rounded-full flex flex-col md:flex-row gap-2">
+          <div className="max-w-4xl mx-auto bg-card border border-border shadow-sm p-2 rounded-full flex flex-col md:flex-row gap-2">
             <div className="flex-1 flex items-center px-4 bg-muted rounded-full border border-border">
               <Search className="h-5 w-5 text-muted-foreground mr-3" />
               <input 
@@ -182,7 +180,7 @@ export function Home() {
                 </optgroup>
               </select>
             </div>
-            <Button size="lg" variant="gradient" className="w-full md:w-auto rounded-full px-8 h-12">
+            <Button size="lg" className="w-full md:w-auto rounded-full px-8 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
               Buscar Vagas
             </Button>
           </div>
@@ -191,7 +189,7 @@ export function Home() {
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <span className="text-sm text-muted-foreground flex items-center mr-2">Buscas populares:</span>
             {["TI & Software", "Engenharia", "Marketing", "Nível N3+", "Inglês Nativo", "Remoto"].map((tag) => (
-              <Badge key={tag} variant="glass" className="hover:bg-white/10 cursor-pointer transition-colors py-1.5 px-4">
+              <Badge key={tag} variant="outline" className="hover:bg-primary hover:text-primary-foreground cursor-pointer transition-colors py-1.5 px-4 rounded-none">
                 {tag}
               </Badge>
             ))}
@@ -255,7 +253,7 @@ export function Home() {
                         className="h-12 w-12 rounded-xl border border-border object-contain bg-white/5"
                       />
                     ) : (
-                      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-muted to-background border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-lg group-hover:glow-primary transition-all">
+                      <div className="h-12 w-12 bg-muted border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-sm group-hover:border-primary transition-all rounded-none">
                         {getCompanyInitials(job.companies?.name || 'XX')}
                       </div>
                     )}
@@ -314,8 +312,7 @@ export function Home() {
 
       {/* Featured Companies */}
       <section className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="glass-panel rounded-3xl p-10 md:p-16 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+        <div className="bg-card border border-border shadow-sm rounded-none p-10 md:p-16 relative overflow-hidden">
           
           <div className="text-center mb-12 relative z-10">
             <h2 className="text-3xl font-bold tracking-tight mb-4 text-foreground">Empresas Contratando</h2>

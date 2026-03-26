@@ -76,60 +76,62 @@ export function Companies() {
       ) : companies.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {companies.map((company) => (
-            <Card key={company.id} className="glass-panel-hover group cursor-pointer border-border">
-              <CardHeader className="pb-4">
-                <div className="flex items-start gap-4">
-                  {company.logo_url ? (
-                    <img 
-                      src={company.logo_url} 
-                      alt={company.name} 
-                      className="h-16 w-16 rounded-xl border border-border object-contain bg-white/5"
-                    />
-                  ) : (
-                    <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-muted to-background border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-lg group-hover:glow-primary transition-all">
-                      {getCompanyInitials(company.name)}
+            <Link key={company.id} to={`/empresa/${company.id}`}>
+              <Card className="glass-panel-hover group cursor-pointer border-border h-full">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start gap-4">
+                    {company.logo_url ? (
+                      <img 
+                        src={company.logo_url} 
+                        alt={company.name} 
+                        className="h-16 w-16 rounded-xl border border-border object-contain bg-white/5"
+                      />
+                    ) : (
+                      <div className="h-16 w-16 rounded-none bg-muted border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-sm group-hover:border-primary transition-all">
+                        {getCompanyInitials(company.name)}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg mb-1 group-hover:text-primary transition-colors truncate">
+                        {company.name}
+                      </CardTitle>
+                      {company.industry && (
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                          {company.industry}
+                        </Badge>
+                      )}
                     </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {company.description && (
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      {company.description}
+                    </p>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg mb-1 group-hover:text-primary transition-colors truncate">
-                      {company.name}
-                    </CardTitle>
-                    {company.industry && (
-                      <Badge variant="secondary" className="bg-muted text-muted-foreground">
-                        {company.industry}
-                      </Badge>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t border-border">
+                    <div className="flex items-center text-sm text-foreground/80">
+                      <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-primary">{company.open_jobs}</span>
+                      <span className="text-muted-foreground ml-1">vagas abertas</span>
+                    </div>
+                    
+                    {company.website && (
+                      <a 
+                        href={company.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Globe className="h-4 w-4" />
+                      </a>
                     )}
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {company.description && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {company.description}
-                  </p>
-                )}
-                
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <div className="flex items-center text-sm text-foreground/80">
-                    <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-primary">{company.open_jobs}</span>
-                    <span className="text-muted-foreground ml-1">vagas abertas</span>
-                  </div>
-                  
-                  {company.website && (
-                    <a 
-                      href={company.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Globe className="h-4 w-4" />
-                    </a>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       ) : (

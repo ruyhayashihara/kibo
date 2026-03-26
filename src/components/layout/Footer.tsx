@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm border border-primary/20">
                 <Briefcase className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold tracking-tight text-foreground">

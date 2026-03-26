@@ -26,7 +26,7 @@ interface JobWithCompany {
   is_sponsored: boolean
   is_featured: boolean
   created_at: string
-  companies: { name: string; logo_url: string | null } | null
+  companies: { id: string; name: string; logo_url: string | null } | null
 }
 
 export function Jobs() {
@@ -38,7 +38,7 @@ export function Jobs() {
       try {
         const { data, error } = await supabase
           .from('jobs')
-          .select('*, companies(name, logo_url)')
+          .select('*, companies(id, name, logo_url)')
           .order('is_featured', { ascending: false })
           .order('created_at', { ascending: false })
 
@@ -82,8 +82,8 @@ export function Jobs() {
       {/* Search Header */}
       <div className="mb-10">
         <h1 className="text-3xl font-bold tracking-tight mb-6">Buscar Vagas</h1>
-        <div className="glass-panel p-2 rounded-2xl flex flex-col md:flex-row gap-2">
-          <div className="flex-1 flex items-center px-4 bg-muted rounded-xl border border-border">
+        <div className="bg-card border border-border p-2 rounded-full flex flex-col md:flex-row gap-2 shadow-sm">
+          <div className="flex-1 flex items-center px-4 bg-muted rounded-full border border-border">
             <Search className="h-5 w-5 text-muted-foreground mr-3" />
             <input 
               type="text" 
@@ -91,7 +91,7 @@ export function Jobs() {
               className="w-full bg-transparent border-none focus:outline-none text-foreground h-12 placeholder:text-muted-foreground"
             />
           </div>
-          <div className="flex-1 flex items-center px-4 bg-muted rounded-xl border border-border">
+          <div className="flex-1 flex items-center px-4 bg-muted rounded-full border border-border">
             <MapPin className="h-5 w-5 text-muted-foreground mr-3" />
             <select 
               name="region"
@@ -163,7 +163,7 @@ export function Jobs() {
               </optgroup>
             </select>
           </div>
-          <Button size="lg" variant="gradient" className="w-full md:w-auto rounded-xl px-8 h-12">
+          <Button size="lg" className="w-full md:w-auto rounded-full px-8 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
             Buscar
           </Button>
         </div>
@@ -263,7 +263,7 @@ export function Jobs() {
                       className="h-16 w-16 rounded-xl border border-border object-contain bg-white/5 shrink-0"
                     />
                   ) : (
-                    <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-muted to-background border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-lg shrink-0">
+                    <div className="h-16 w-16 rounded-none bg-muted border border-border flex items-center justify-center text-xl font-bold text-foreground shadow-sm shrink-0">
                       {getCompanyInitials(job.companies?.name || 'XX')}
                     </div>
                   )}
@@ -283,7 +283,13 @@ export function Jobs() {
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Building2 className="mr-1.5 h-4 w-4" />
-                          {job.companies?.name || 'Empresa'}
+                          {job.companies?.id ? (
+                            <Link to={`/empresa/${job.companies.id}`} className="hover:text-primary transition-colors hover:underline">
+                              {job.companies.name || 'Empresa'}
+                            </Link>
+                          ) : (
+                            job.companies?.name || 'Empresa'
+                          )}
                         </div>
                       </div>
                       <Badge variant={mapJlptToVariant(job.jlpt_level)} className="font-mono self-start">{job.jlpt_level || 'N/A'}</Badge>

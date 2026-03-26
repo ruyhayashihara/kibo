@@ -11,7 +11,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const { user, signIn } = useAuth()
+  const { user, signIn, isAdmin, isCompany, isCandidate } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as any)?.from?.pathname || "/"
@@ -19,9 +19,17 @@ export function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate(from, { replace: true })
+      if (isAdmin) {
+        navigate('/admin', { replace: true })
+      } else if (isCompany) {
+        navigate('/empresas/dashboard', { replace: true })
+      } else if (isCandidate) {
+        navigate('/dashboard', { replace: true })
+      } else {
+        navigate(from, { replace: true })
+      }
     }
-  }, [user, navigate, from])
+  }, [user, isAdmin, isCompany, isCandidate, navigate, from])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,9 +40,7 @@ export function Login() {
       const { data, error } = await signIn(email, password)
       if (error) throw error
 
-      if (data?.user) {
-        navigate(from, { replace: true })
-      }
+      // Navigation is handled by the useEffect above which reacts to auth state changes
     } catch (error: any) {
       setError(error.message || "Erro ao entrar. Verifique suas credenciais.")
     } finally {
@@ -45,13 +51,11 @@ export function Login() {
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 flex justify-center min-h-[calc(100vh-4rem)] items-center">
       <div className="w-full max-w-md relative">
-        {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-md bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="glass-panel rounded-3xl p-8 md:p-12 relative z-10 border-border">
           <div className="text-center mb-10">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent mb-6 glow-primary">
-              <Briefcase className="h-6 w-6 text-white" />
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-none bg-primary mb-6 shadow-sm">
+              <Briefcase className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
               Bem-vindo de volta
@@ -115,7 +119,7 @@ export function Login() {
             </div>
 
             <Button
-              variant="gradient"
+              variant="default"
               className="w-full rounded-full h-12 text-base font-semibold mt-4"
               type="submit"
               disabled={loading}

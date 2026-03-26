@@ -16,7 +16,14 @@ export function Register() {
   const [loading, setLoading] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   
-  const { user, signIn } = useAuth()
+  // Company form fields
+  const [companyName, setCompanyName] = useState("")
+  const [companyIndustry, setCompanyIndustry] = useState("")
+  const [companySize, setCompanySize] = useState("")
+  const [companyCity, setCompanyCity] = useState("")
+  const [companyPhone, setCompanyPhone] = useState("")
+  
+  const { user, signIn, isAdmin, isCompany, isCandidate } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   
@@ -25,9 +32,17 @@ export function Register() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate(from, { replace: true })
+      if (isAdmin) {
+        navigate('/admin', { replace: true })
+      } else if (isCompany) {
+        navigate('/empresas/dashboard', { replace: true })
+      } else if (isCandidate) {
+        navigate('/dashboard', { replace: true })
+      } else {
+        navigate(from, { replace: true })
+      }
     }
-  }, [user, navigate, from])
+  }, [user, isAdmin, isCompany, isCandidate, navigate, from])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,9 +53,7 @@ export function Register() {
       const { data, error } = await signIn(email, password)
       if (error) throw error
       
-      if (data?.user) {
-        navigate(from, { replace: true })
-      }
+      // Navigation is handled by the useEffect above which reacts to auth state changes
     } catch (error: any) {
       setError(error.message || "Erro ao entrar. Verifique suas credenciais.")
     } finally {
@@ -59,7 +72,7 @@ export function Register() {
         await handleLogin(e); // Call handleLogin for login
       } else {
         // Otherwise, proceed with sign-up
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -70,6 +83,26 @@ export function Register() {
           }
         })
         if (error) throw error
+        
+        // If user is a company, create company record
+        if (userType === "company" && data.user) {
+          const { error: companyError } = await supabase
+            .from('companies')
+            .insert({
+              name: companyName || 'Nova Empresa',
+              industry: companyIndustry || null,
+              description: null,
+              website: null,
+              logo_url: null,
+              open_jobs: 0,
+              user_id: data.user.id
+            })
+          
+          if (companyError) {
+            console.error('Erro ao criar empresa:', companyError)
+          }
+        }
+        
         alert("Cadastro realizado! Verifique seu email.")
       }
     } catch (err: any) {
@@ -82,13 +115,11 @@ export function Register() {
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 flex justify-center min-h-[calc(100vh-4rem)] items-center">
       <div className="w-full max-w-2xl relative">
-        {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-md bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-        
+
         <div className="glass-panel rounded-3xl p-8 md:p-12 relative z-10 border-border">
           <div className="text-center mb-10">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent mb-6 glow-primary">
-              <Briefcase className="h-6 w-6 text-white" />
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-none bg-primary mb-6 shadow-sm">
+              <Briefcase className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
               {isLogin ? "Bem-vindo de volta" : "Crie sua conta"}
@@ -240,7 +271,12 @@ export function Register() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Nome da empresa</label>
-                          <Input placeholder="Ex: Tech Solutions" />
+                          <Input 
+                            placeholder="Ex: Tech Solutions" 
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Email corporativo</label>
@@ -274,18 +310,26 @@ export function Register() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Setor</label>
-                          <select defaultValue="" className="flex h-10 w-full rounded-full border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
-                            <option value="" disabled className="bg-background">Selecione...</option>
-                            <option value="it" className="bg-background">Tecnologia</option>
-                            <option value="industry" className="bg-background">Indústria</option>
-                            <option value="services" className="bg-background">Serviços</option>
-                            <option value="commerce" className="bg-background">Comércio</option>
+                          <select 
+                            value={companyIndustry}
+                            onChange={(e) => setCompanyIndustry(e.target.value)}
+                            className="flex h-10 w-full rounded-full border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none"
+                          >
+                            <option value="" className="bg-background">Selecione...</option>
+                            <option value="Tecnologia" className="bg-background">Tecnologia</option>
+                            <option value="Indústria" className="bg-background">Indústria</option>
+                            <option value="Serviços" className="bg-background">Serviços</option>
+                            <option value="Comércio" className="bg-background">Comércio</option>
                           </select>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Tamanho da empresa</label>
-                          <select defaultValue="" className="flex h-10 w-full rounded-full border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
-                            <option value="" disabled className="bg-background">Selecione...</option>
+                          <select 
+                            value={companySize}
+                            onChange={(e) => setCompanySize(e.target.value)}
+                            className="flex h-10 w-full rounded-full border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none"
+                          >
+                            <option value="" className="bg-background">Selecione...</option>
                             <option value="1-10" className="bg-background">1-10 funcionários</option>
                             <option value="11-50" className="bg-background">11-50 funcionários</option>
                             <option value="51-200" className="bg-background">51-200 funcionários</option>
@@ -297,11 +341,19 @@ export function Register() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Cidade</label>
-                          <Input placeholder="Ex: Tóquio" />
+                          <Input 
+                            placeholder="Ex: Tóquio" 
+                            value={companyCity}
+                            onChange={(e) => setCompanyCity(e.target.value)}
+                          />
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Telefone</label>
-                          <Input placeholder="Ex: +81 00-0000-0000" />
+                          <Input 
+                            placeholder="Ex: +81 00-0000-0000" 
+                            value={companyPhone}
+                            onChange={(e) => setCompanyPhone(e.target.value)}
+                          />
                         </div>
                       </div>
                     </>
@@ -325,7 +377,7 @@ export function Register() {
               )}
 
               <Button 
-                variant="gradient" 
+                variant="default" 
                 className="w-full rounded-full h-12 text-base font-semibold mt-4"
                 type="submit"
                 disabled={loading}

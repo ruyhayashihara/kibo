@@ -12,6 +12,7 @@ import { Register } from "./pages/Register"
 import { Login } from "./pages/Login"
 import { Dashboard } from "./pages/Dashboard"
 import { Companies } from "./pages/Companies"
+import { CompanyProfile } from "./pages/CompanyProfile"
 import { CompanyDashboard } from "./pages/CompanyDashboard"
 import { CompanyNewJob } from "./pages/CompanyNewJob"
 import { AdminDashboard } from "./pages/AdminDashboard"
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="vagas" element={<Jobs />} />
             <Route path="vagas/:id" element={<JobDetail />} />
             <Route path="empresas" element={<Companies />} />
+            <Route path="empresa/:id" element={<CompanyProfile />} />
             <Route path="cadastro" element={<Register />} />
             <Route path="login" element={<Login />} />
             <Route 
@@ -42,6 +44,14 @@ export default function App() {
             />
             <Route 
               path="empresa/dashboard" 
+              element={
+                <CompanyProtectedRoute>
+                  <CompanyDashboard />
+                </CompanyProtectedRoute>
+              } 
+            />
+            <Route 
+              path="empresas/dashboard" 
               element={
                 <CompanyProtectedRoute>
                   <CompanyDashboard />

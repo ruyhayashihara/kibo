@@ -74,11 +74,11 @@ function StatusBadge({ status }: { status: string }) {
     inactive: { class: "border-zinc-500/50 text-zinc-400 bg-zinc-500/10", icon: XCircle },
     inativo: { class: "border-zinc-500/50 text-zinc-400 bg-zinc-500/10", icon: XCircle },
     suspended: { class: "border-amber-500/50 text-amber-400 bg-amber-500/10", icon: Ban },
-    pending: { class: "border-blue-500/50 text-blue-400 bg-blue-500/10", icon: AlertTriangle },
+    pending: { class: "border-amber-500/50 text-amber-500 bg-amber-500/10", icon: AlertTriangle },
     rejected: { class: "border-red-500/50 text-red-400 bg-red-500/10", icon: XCircle },
     closed: { class: "border-zinc-500/50 text-zinc-400 bg-zinc-500/10", icon: XCircle },
-    viewed: { class: "border-cyan-500/50 text-cyan-400 bg-cyan-500/10", icon: Eye },
-    interview: { class: "border-purple-500/50 text-purple-400 bg-purple-500/10", icon: Users },
+    viewed: { class: "border-teal-500/50 text-teal-500 bg-teal-500/10", icon: Eye },
+    interview: { class: "border-emerald-500/50 text-emerald-500 bg-emerald-500/10", icon: Users },
     accepted: { class: "border-emerald-500/50 text-emerald-400 bg-emerald-500/10", icon: CheckCircle2 },
   }
   const c = config[status] || config.inactive
@@ -576,7 +576,7 @@ export function AdminDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-primary">
+              <div className="h-10 w-10 rounded-none bg-primary flex items-center justify-center shadow-sm">
                 <Shield className="h-5 w-5 text-white" />
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-foreground">Painel Administrativo</h1>
@@ -612,17 +612,17 @@ export function AdminDashboard() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
               {[
-                { title: "Usuários", value: stats.totalUsers, icon: Users, color: "from-blue-500 to-cyan-500" },
-                { title: "Empresas", value: stats.totalCompanies, icon: Building2, color: "from-violet-500 to-purple-500" },
-                { title: "Vagas Totais", value: stats.totalJobs, icon: Briefcase, color: "from-emerald-500 to-teal-500" },
-                { title: "Vagas Ativas", value: stats.activeJobs, icon: CheckCircle2, color: "from-green-500 to-emerald-500" },
-                { title: "Pendentes", value: stats.pendingJobs, icon: AlertTriangle, color: "from-amber-500 to-orange-500" },
-                { title: "Candidaturas", value: stats.totalApplications, icon: ClipboardList, color: "from-pink-500 to-rose-500" },
+                { title: "Usuários", value: stats.totalUsers, icon: Users, color: "bg-emerald-600" },
+                { title: "Empresas", value: stats.totalCompanies, icon: Building2, color: "bg-amber-600" },
+                { title: "Vagas Totais", value: stats.totalJobs, icon: Briefcase, color: "bg-emerald-600" },
+                { title: "Vagas Ativas", value: stats.activeJobs, icon: CheckCircle2, color: "bg-green-600" },
+                { title: "Pendentes", value: stats.pendingJobs, icon: AlertTriangle, color: "bg-amber-600" },
+                { title: "Candidaturas", value: stats.totalApplications, icon: ClipboardList, color: "bg-rose-600" },
               ].map((stat, i) => (
                 <Card key={i} className="glass-panel overflow-hidden group hover:border-primary/30 transition-all">
                   <CardContent className="p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                      <div className={`h-10 w-10 rounded-none ${stat.color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
                         <stat.icon className="h-5 w-5 text-white" />
                       </div>
                     </div>
@@ -765,7 +765,7 @@ export function AdminDashboard() {
                         <tr key={user.id} className="hover:bg-muted/30 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/50 to-accent/50 flex items-center justify-center text-white text-xs font-bold">
+                              <div className="h-8 w-8 rounded-none bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
                                 {user.full_name.charAt(0).toUpperCase()}
                               </div>
                               <span className="font-medium text-foreground">{user.full_name}</span>
@@ -837,7 +837,7 @@ export function AdminDashboard() {
                         <tr key={company.id} className="hover:bg-muted/30 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500/50 to-purple-500/50 flex items-center justify-center text-white text-xs font-bold">
+                              <div className="h-8 w-8 rounded-none bg-emerald-600 flex items-center justify-center text-white text-xs font-bold">
                                 {company.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -920,7 +920,7 @@ export function AdminDashboard() {
                         <tr key={admin.id} className="hover:bg-muted/30 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-xs font-bold">
+                              <div className="h-8 w-8 rounded-none bg-amber-600 flex items-center justify-center text-white text-xs font-bold">
                                 <Shield className="h-4 w-4" />
                               </div>
                               <span className="font-medium text-foreground">{admin.full_name}</span>
@@ -1185,8 +1185,8 @@ export function AdminDashboard() {
                     <label className="text-sm font-medium text-foreground/80 block mb-3">Tipo de conta</label>
                     <div className="grid grid-cols-3 gap-3">
                       {([
-                        { type: "candidate" as const, label: "Usuário", icon: Users, color: "from-blue-500 to-cyan-500" },
-                        { type: "company" as const, label: "Empresa", icon: Building2, color: "from-violet-500 to-purple-500" },
+                        { type: "candidate" as const, label: "Usuário", icon: Users, color: "from-emerald-500 to-teal-500" },
+                        { type: "company" as const, label: "Empresa", icon: Building2, color: "from-amber-500 to-orange-500" },
                         { type: "admin" as const, label: "Admin", icon: Shield, color: "from-amber-500 to-orange-500" },
                       ]).map(opt => (
                         <button
@@ -1199,7 +1199,7 @@ export function AdminDashboard() {
                               : "border-border bg-muted hover:bg-muted/80"
                           }`}
                         >
-                          <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${opt.color} flex items-center justify-center mb-2 ${
+                          <div className={`h-10 w-10 rounded-none bg-primary flex items-center justify-center mb-2 ${
                             createForm.accountType === opt.type ? "shadow-lg" : "opacity-60"
                           }`}>
                             <opt.icon className="h-5 w-5 text-white" />
@@ -1710,8 +1710,8 @@ export function AdminDashboard() {
                 <label className="text-sm font-medium text-foreground/80">Status da Candidatura</label>
                 <select value={editingApplication.status || ''} onChange={e => setEditingApplication({ ...editingApplication, status: e.target.value as any })} className="flex h-12 w-full rounded-2xl border border-border bg-input px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none">
                   <option value="pending" className="bg-background text-amber-500">Pendente</option>
-                  <option value="viewed" className="bg-background text-cyan-500">Visualizada</option>
-                  <option value="interview" className="bg-background text-purple-500">Entrevista Marcada</option>
+                  <option value="viewed" className="bg-background text-teal-500">Visualizada</option>
+                  <option value="interview" className="bg-background text-emerald-500">Entrevista Marcada</option>
                   <option value="accepted" className="bg-background text-emerald-500">Aprovado (Aceito)</option>
                   <option value="rejected" className="bg-background text-red-500">Rejeitado</option>
                 </select>

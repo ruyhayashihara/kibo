@@ -61,6 +61,7 @@ export type Database = {
       companies: {
         Row: {
           id: string
+          user_id: string | null
           name: string
           logo_url: string | null
           description: string | null

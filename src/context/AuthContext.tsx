@@ -99,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                            currentUser.user_metadata?.is_admin === true ||
                            currentUser.email?.endsWith('@kibojobs.com');
         const companyStatus = currentUser.app_metadata?.role === 'company' || 
-                             currentUser.user_metadata?.account_type === 'company';
+                              currentUser.user_metadata?.account_type === 'company';
         setIsAdmin(adminStatus);
         setIsCompany(companyStatus);
         setIsCandidate(!adminStatus && !companyStatus);

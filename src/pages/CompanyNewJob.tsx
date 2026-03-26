@@ -10,11 +10,33 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/src/components/ui/button";
 import { Badge } from "@/src/components/ui/badge";
 import { supabase } from "@/src/lib/supabase";
+import { useAuth } from "../context/AuthContext";
 
 export function CompanyNewJob() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Fetch company ID for the current user
+  useEffect(() => {
+    async function fetchCompanyId() {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data && !error) {
+        setCompanyId(data.id);
+      }
+    }
+    
+    fetchCompanyId();
+  }, [user]);
   
   useEffect(() => {
     return () => {
@@ -90,12 +112,18 @@ export function CompanyNewJob() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!companyId) {
+      console.error('Company ID not loaded yet. Cannot submit job.');
+      return;
+    }
     
     try {
       const { data, error } = await supabase
         .from('jobs')
         .insert({
           title: formData.title,
+          company_id: companyId,
           location: formData.location,
           work_mode: formData.workMode,
           job_type: formData.contractType,
@@ -145,8 +173,8 @@ export function CompanyNewJob() {
                 <ChevronLeft className="w-4 h-4" /> Voltar ao Dashboard
               </Link>
               <h1 className="text-4xl font-bold text-foreground glow-text flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-primary">
-                  <Plus className="w-7 h-7 text-white" />
+                <div className="h-12 w-12 rounded-none bg-primary flex items-center justify-center shadow-sm">
+                  <Plus className="w-7 h-7 text-primary-foreground" />
                 </div>
                 Publicar Nova Vaga
               </h1>
@@ -421,13 +449,12 @@ export function CompanyNewJob() {
                   
                   {/* Preview Card */}
                   <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-                     <div className="relative glass-panel rounded-3xl p-8 border-border overflow-hidden">
-                      <div className="absolute top-0 right-0 bg-primary/20 text-primary text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 rounded-bl-2xl border-l border-b border-primary/20">
+                     <div className="relative bg-card rounded-none p-8 border border-border shadow-sm overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-primary/20 text-primary text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 border-l border-b border-primary/20">
                         Visualização
                       </div>
                       <div className="flex flex-col md:flex-row items-start gap-6">
-                        <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center text-primary font-bold text-2xl shadow-xl border border-border shrink-0">
+                        <div className="w-20 h-20 bg-muted rounded-none flex items-center justify-center text-foreground font-bold text-2xl shadow-sm border border-border shrink-0">
                           TC
                         </div>
                          <div className="flex-1">

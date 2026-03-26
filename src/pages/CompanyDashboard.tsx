@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { 
   LayoutDashboard, 
@@ -13,6 +13,7 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
+  AlertCircle,
   Facebook,
   Instagram,
   Youtube,
@@ -28,6 +29,7 @@ import { Input } from "@/src/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { AdminJob } from "../lib/adminTypes"
 import { useAuth } from "../context/AuthContext"
+import { supabase, isSupabaseConfigured } from "../lib/supabase"
 import {
   AreaChart,
   Area,
@@ -132,13 +134,33 @@ const INITIAL_JOBS: AdminJob[] = [
   }
 ]
 
+interface CompanyRecord {
+  id: string
+  user_id: string | null
+  name: string
+  logo_url: string | null
+  description: string | null
+  website: string | null
+  industry: string | null
+  email?: string | null
+  location?: string | null
+  open_jobs: number
+  created_at: string
+  updated_at: string
+}
+
 export function CompanyDashboard() {
   const navigate = useNavigate()
-  const { signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState("overview")
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [jobs, setJobs] = useState(INITIAL_JOBS)
+  const [jobs, setJobs] = useState<AdminJob[]>([])
+  const [company, setCompany] = useState<CompanyRecord | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [jobsLoading, setJobsLoading] = useState(false)
+  const [stats, setStats] = useState({ activeJobs: 0, totalViews: 0, totalApplications: 0 })
 
   // Profile Edit State
   const [profileForm, setProfileForm] = useState({
@@ -156,6 +178,129 @@ export function CompanyDashboard() {
   })
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
+
+  // Fetch company and jobs data
+  useEffect(() => {
+    async function fetchData() {
+      if (!isSupabaseConfigured) {
+        // Demo mode: load mock data
+        setLoading(false)
+        setJobs(INITIAL_JOBS)
+        setStats({
+          activeJobs: INITIAL_JOBS.filter(j => j.status === 'active').length,
+          totalViews: INITIAL_JOBS.reduce((sum, j) => sum + j.views, 0),
+          totalApplications: INITIAL_JOBS.reduce((sum, j) => sum + (j.applications || 0), 0),
+        })
+        // Set mock company for profile form
+        setCompany({
+          id: 'demo-company-id',
+          user_id: null,
+          name: 'TechCorp Japan',
+          email: 'contato@techcorp.com',
+          industry: 'it',
+          location: 'Tóquio',
+          description: 'Somos uma empresa de tecnologia focada em inovações para o mercado asiático, conectando talentos globais a grandes oportunidades no Japão.',
+          logo_url: null,
+          website: null,
+          open_jobs: 0,
+          created_at: '',
+          updated_at: '',
+        })
+        return
+      }
+
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        // Fetch company by user_id
+        const { data: companyData, error: companyError } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+
+        if (companyError) throw companyError
+        if (!companyData) {
+          setError('Empresa não encontrada. Por favor, cadastre sua empresa primeiro.')
+          setLoading(false)
+          return
+        }
+
+        setCompany(companyData)
+        // Update profileForm with company data
+        setProfileForm(prev => ({
+          ...prev,
+          name: companyData.name || '',
+          email: companyData.email || '',
+          industry: companyData.industry || 'it',
+          location: companyData.location || '',
+          description: companyData.description || '',
+          logo: companyData.logo_url || '',
+          // Social links not in companies table, keep existing defaults
+        }))
+
+        // Fetch jobs for this company
+        setJobsLoading(true)
+        const { data: jobsData, error: jobsError } = await supabase
+          .from('jobs')
+          .select('*, companies(name)')
+          .eq('company_id', companyData.id)
+          .order('created_at', { ascending: false })
+
+        if (jobsError) throw jobsError
+        const jobsWithCompanyName = (jobsData || []).map(job => ({
+          ...job,
+          company_name: job.companies?.name || companyData.name
+        }))
+        setJobs(jobsWithCompanyName)
+
+        // Fetch applications count for these jobs
+        const jobIds = jobsWithCompanyName.map(j => j.id)
+        if (jobIds.length > 0) {
+          const { data: appsData, error: appsError } = await supabase
+            .from('applications')
+            .select('job_id')
+            .in('job_id', jobIds)
+
+          if (!appsError && appsData) {
+            // Count applications per job
+            const appsCountByJob: Record<string, number> = {}
+            appsData.forEach(app => {
+              appsCountByJob[app.job_id] = (appsCountByJob[app.job_id] || 0) + 1
+            })
+            // Update jobs with applications count
+            setJobs(prev => prev.map(j => ({
+              ...j,
+              applications: appsCountByJob[j.id] || 0
+            })))
+            // Update stats
+            const totalApplications = Object.values(appsCountByJob).reduce((a, b) => a + b, 0)
+            const activeJobs = jobsWithCompanyName.filter(j => j.status === 'active').length
+            const totalViews = jobsWithCompanyName.reduce((sum, j) => sum + j.views, 0)
+            setStats({ activeJobs, totalViews, totalApplications })
+          } else {
+            // If applications fetch fails, still set stats without applications count
+            const activeJobs = jobsWithCompanyName.filter(j => j.status === 'active').length
+            const totalViews = jobsWithCompanyName.reduce((sum, j) => sum + j.views, 0)
+            setStats({ activeJobs, totalViews, totalApplications: 0 })
+          }
+        } else {
+          setStats({ activeJobs: 0, totalViews: 0, totalApplications: 0 })
+        }
+      } catch (err: any) {
+        console.error('Erro ao carregar dados da empresa:', err)
+        setError(err.message || 'Erro ao carregar dados')
+      } finally {
+        setLoading(false)
+        setJobsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [user])
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault()
@@ -189,6 +334,28 @@ export function CompanyDashboard() {
     setEditingJob(null)
   }
 
+  if (loading) {
+    return (
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+          <p className="text-muted-foreground">Carregando dados da empresa...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-6 rounded-xl flex flex-col items-center gap-4">
+          <AlertCircle className="h-8 w-8" />
+          <p>{error}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-col md:flex-row gap-8">
@@ -198,13 +365,17 @@ export function CompanyDashboard() {
           <div className="glass-panel rounded-2xl p-6 border-border sticky top-24">
             {/* Company Profile Summary */}
             <div className="flex flex-col items-center text-center mb-8">
-              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary to-accent p-1 mb-4">
-                <div className="h-full w-full rounded-xl bg-muted flex items-center justify-center overflow-hidden">
-                  <Building2 className="h-10 w-10 text-primary/80" />
+              <div className="h-20 w-20 rounded-none bg-primary p-1 mb-4 shadow-sm">
+                <div className="h-full w-full rounded-none bg-muted flex items-center justify-center overflow-hidden">
+                  {company?.logo_url ? (
+                    <img src={company.logo_url} alt={company.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Building2 className="h-10 w-10 text-primary/80" />
+                  )}
                 </div>
               </div>
-              <h3 className="font-semibold text-lg text-foreground">TechCorp Japan</h3>
-              <p className="text-sm text-muted-foreground">Tecnologia • Tóquio</p>
+              <h3 className="font-semibold text-lg text-foreground">{company?.name || 'Sua empresa'}</h3>
+              <p className="text-sm text-muted-foreground">{company?.industry || 'Tecnologia'} • {company?.location || 'Localização'}</p>
             </div>
 
             {/* Navigation */}
@@ -481,7 +652,7 @@ export function CompanyDashboard() {
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Greeting */}
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Bom dia, TechCorp!</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Bom dia, {company?.name?.split(' ')[0] || 'Empresa'}!</h1>
                 <p className="text-muted-foreground">Aqui está o resumo do seu recrutamento hoje.</p>
               </div>
 
@@ -493,17 +664,17 @@ export function CompanyDashboard() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground font-medium">Vagas ativas</p>
-                    <p className="text-2xl font-bold text-foreground">5</p>
+                    <p className="text-2xl font-bold text-foreground">{stats.activeJobs}</p>
                   </div>
                 </div>
                 
                 <div className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
-                  <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
+                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
                     <Eye className="h-6 w-6" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground font-medium">Visualizações</p>
-                    <p className="text-2xl font-bold text-foreground">1.240</p>
+                    <p className="text-2xl font-bold text-foreground">{stats.totalViews.toLocaleString()}</p>
                   </div>
                 </div>
                 
@@ -513,7 +684,7 @@ export function CompanyDashboard() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground font-medium">Candidatos</p>
-                    <p className="text-2xl font-bold text-foreground">87</p>
+                    <p className="text-2xl font-bold text-foreground">{stats.totalApplications}</p>
                   </div>
                 </div>
               </div>
@@ -551,7 +722,7 @@ export function CompanyDashboard() {
                 <div className="glass-panel rounded-2xl p-8 border-border relative overflow-hidden flex flex-col justify-center items-center text-center">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
                   
-                  <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-6 glow-primary relative z-10">
+                  <div className="h-16 w-16 rounded-none bg-primary flex items-center justify-center mb-6 shadow-sm relative z-10">
                     <PlusCircle className="h-8 w-8 text-white" />
                   </div>
                   
@@ -737,7 +908,7 @@ export function CompanyDashboard() {
               <form onSubmit={handleSaveProfile} className="space-y-8">
                 {/* Logo Section */}
                 <div className="glass-panel p-6 rounded-2xl border border-border flex items-center gap-6">
-                  <div className="h-24 w-24 shrink-0 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 flex flex-col items-center justify-center relative group cursor-pointer overflow-hidden text-primary">
+                  <div className="h-24 w-24 shrink-0 rounded-none bg-muted border border-border flex flex-col items-center justify-center relative group cursor-pointer overflow-hidden text-primary">
                     {profileForm.logo ? (
                       <img src={profileForm.logo} alt="Logo" className="w-full h-full object-cover" />
                     ) : (
@@ -847,7 +1018,7 @@ export function CompanyDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground/80 flex items-center gap-2">
-                          <Facebook className="h-4 w-4 text-blue-500" /> Facebook
+                          <Facebook className="h-4 w-4 text-[#1877F2]" /> Facebook
                         </label>
                         <input 
                           type="url" 
@@ -859,7 +1030,7 @@ export function CompanyDashboard() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground/80 flex items-center gap-2">
-                          <Instagram className="h-4 w-4 text-pink-500" /> Instagram
+                          <Instagram className="h-4 w-4 text-[#E4405F]" /> Instagram
                         </label>
                         <input 
                           type="url" 
@@ -883,7 +1054,7 @@ export function CompanyDashboard() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground/80 flex items-center gap-2">
-                          <Link2 className="h-4 w-4 text-cyan-500" /> TikTok
+                          <Link2 className="h-4 w-4 text-[#000000] dark:text-white" /> TikTok
                         </label>
                         <input 
                           type="url" 

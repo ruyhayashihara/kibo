@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* Fallback styles in case Tailwind fails to load */
@@ -7,49 +7,49 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
   --background: #ffffff;
-  --foreground: #020617;
+  --foreground: #09090b;
   --card: #ffffff;
-  --card-hover: #f8fafc;
-  --card-border: #cbd5e1;
-  --primary: #2563eb;
+  --card-hover: #f4f4f5;
+  --card-border: #e4e4e7;
+  --primary: #059669; /* Emerald 600 */
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f8fafc;
-  --muted-foreground: #475569; /* Darker for better contrast */
-  --accent: #db2777;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f59e0b; /* Amber 500 */
   --accent-foreground: #ffffff;
-  --border: #cbd5e1; /* More visible than e2e8f0 */
+  --border: #e4e4e7;
   --input: #ffffff;
-  --ring: rgba(37, 99, 235, 0.2);
+  --ring: rgba(16, 185, 129, 0.2);
 }
 
 .dark {
-  --background: #080B1A;
-  --foreground: #ffffff;
-  --card: rgba(255, 255, 255, 0.04);
-  --card-hover: rgba(255, 255, 255, 0.08);
-  --card-border: rgba(255, 255, 255, 0.1);
-  --primary: #3B82F6;
+  --background: #0f1219;
+  --foreground: #f8fafc;
+  --card: #1a1d27;
+  --card-hover: #212533;
+  --card-border: rgba(255, 255, 255, 0.05);
+  --primary: #10b981; /* Emerald 500 */
   --primary-foreground: #ffffff;
-  --secondary: rgba(255, 255, 255, 0.1);
-  --secondary-foreground: #e5e7eb;
-  --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: #9ca3af;
-  --accent: #EC4899;
+  --secondary: #212533;
+  --secondary-foreground: #f8fafc;
+  --muted: #1a1d27;
+  --muted-foreground: #94a3b8;
+  --accent: #f59e0b; /* Amber 500 */
   --accent-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.05);
-  --ring: rgba(59, 130, 246, 0.5);
+  --border: rgba(255, 255, 255, 0.05);
+  --input: #1a1d27;
+  --ring: rgba(16, 185, 129, 0.5);
 }
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -74,9 +74,9 @@ body {
   --color-input: var(--input);
   --color-ring: var(--ring);
   
-  --radius-lg: 1rem;
-  --radius-md: 0.75rem;
-  --radius-sm: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-md: 0.25rem;
+  --radius-sm: 0.125rem;
 }
 
 @layer base {
@@ -87,24 +87,18 @@ body {
   }
   
   .dark body {
-    background-color: #080B1A;
-    background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-                      radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
-    background-attachment: fixed;
+    background-color: #0f1219;
   }
 
   .light body {
     background-color: #ffffff;
-    background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.05) 0%, transparent 50%),
-                      radial-gradient(circle at 100% 100%, rgba(219, 39, 119, 0.05) 0%, transparent 50%);
-    background-attachment: fixed;
   }
 }
 
 /* Custom Utilities for the "Stitch" look */
 @layer utilities {
   .glass-panel {
-    @apply bg-card border border-card-border backdrop-blur-xl shadow-xl;
+    @apply bg-card border border-card-border shadow-md;
   }
   
   .glass-panel-hover {
@@ -112,18 +106,16 @@ body {
   }
   
   .glow-text {
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0);
   }
   
   .dark .glow-text {
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   }
   
   .glow-primary {
-    box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
   
   .glow-accent {
-    box-shadow: 0 0 30px -5px rgba(236, 72, 153, 0.4);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 }
