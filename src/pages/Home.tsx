@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Search, MapPin, Briefcase, Building2, Globe, Clock, ChevronRight } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
@@ -29,9 +29,19 @@ interface JobWithCompany {
 }
 
 export function Home() {
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [locationQuery, setLocationQuery] = useState("")
   const [featuredJobs, setFeaturedJobs] = useState<JobWithCompany[]>([])
   const [companies, setCompanies] = useState<{ id: string; name: string; logo_url: string | null }[]>([])
   const [loading, setLoading] = useState(true)
+
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (searchQuery.trim()) params.set("q", searchQuery.trim())
+    if (locationQuery) params.set("location", locationQuery)
+    navigate(`/vagas?${params.toString()}`)
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -105,6 +115,9 @@ export function Home() {
               <input 
                 type="text" 
                 placeholder="Cargo, habilidade ou empresa..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSearch()}
                 className="w-full bg-transparent border-none focus:outline-none text-foreground h-12 placeholder:text-muted-foreground"
               />
             </div>
@@ -112,75 +125,74 @@ export function Home() {
               <MapPin className="h-5 w-5 text-muted-foreground mr-3" />
               <select 
                 name="region"
-                defaultValue=""
+                value={locationQuery}
+                onChange={e => setLocationQuery(e.target.value)}
                 className="w-full bg-transparent border-none focus:outline-none text-foreground h-12 appearance-none cursor-pointer"
               >
-                <option value="" className="bg-background">Todas as Localidades</option>
-                <optgroup label="Região" className="bg-background">
-                  <option value="JP-R1">Hokkaido</option>
-                  <option value="JP-R2">Tohoku</option>
-                  <option value="JP-R3">Kanto</option>
-                  <option value="JP-R4">Chubu</option>
-                  <option value="JP-R5">Kansai</option>
-                  <option value="JP-R6">Chugoku</option>
-                  <option value="JP-R7">Shikoku</option>
-                  <option value="JP-R8">Kyushu</option>
+                <option value="">Todas as Localidades</option>
+                <optgroup label="Principais cidades">
+                  <option value="Tokyo">Tokyo</option>
+                  <option value="Osaka">Osaka</option>
+                  <option value="Kyoto">Kyoto</option>
+                  <option value="Yokohama">Yokohama</option>
+                  <option value="Nagoya">Nagoya</option>
+                  <option value="Fukuoka">Fukuoka</option>
+                  <option value="Sapporo">Sapporo</option>
+                  <option value="Kobe">Kobe</option>
+                  <option value="Hiroshima">Hiroshima</option>
+                  <option value="Sendai">Sendai</option>
                 </optgroup>
-                <optgroup label="Província" className="bg-background">
-                  <option value="JP-01">Hokkaido</option>
-                  <option value="JP-02">Aomori</option>
-                  <option value="JP-03">Iwate</option>
-                  <option value="JP-04">Miyagi</option>
-                  <option value="JP-05">Akita</option>
-                  <option value="JP-06">Yamagata</option>
-                  <option value="JP-07">Fukushima</option>
-                  <option value="JP-08">Ibaraki</option>
-                  <option value="JP-09">Tochigi</option>
-                  <option value="JP-10">Gunma</option>
-                  <option value="JP-11">Saitama</option>
-                  <option value="JP-12">Chiba</option>
-                  <option value="JP-13">Tokyo</option>
-                  <option value="JP-14">Kanagawa</option>
-                  <option value="JP-15">Niigata</option>
-                  <option value="JP-16">Toyama</option>
-                  <option value="JP-17">Ishikawa</option>
-                  <option value="JP-18">Fukui</option>
-                  <option value="JP-19">Yamanashi</option>
-                  <option value="JP-20">Nagano</option>
-                  <option value="JP-21">Gifu</option>
-                  <option value="JP-22">Shizuoka</option>
-                  <option value="JP-23">Aichi</option>
-                  <option value="JP-24">Mie</option>
-                  <option value="JP-25">Shiga</option>
-                  <option value="JP-26">Kyoto</option>
-                  <option value="JP-27">Osaka</option>
-                  <option value="JP-28">Hyogo</option>
-                  <option value="JP-29">Nara</option>
-                  <option value="JP-30">Wakayama</option>
-                  <option value="JP-31">Tottori</option>
-                  <option value="JP-32">Shimane</option>
-                  <option value="JP-33">Okayama</option>
-                  <option value="JP-34">Hiroshima</option>
-                  <option value="JP-35">Yamaguchi</option>
-                  <option value="JP-36">Tokushima</option>
-                  <option value="JP-37">Kagawa</option>
-                  <option value="JP-38">Ehime</option>
-                  <option value="JP-39">Kochi</option>
-                  <option value="JP-40">Fukuoka</option>
-                  <option value="JP-41">Saga</option>
-                  <option value="JP-42">Nagasaki</option>
-                  <option value="JP-43">Kumamoto</option>
-                  <option value="JP-44">Oita</option>
-                  <option value="JP-45">Miyazaki</option>
-                  <option value="JP-46">Kagoshima</option>
-                  <option value="JP-47">Okinawa</option>
+                <optgroup label="Todas as províncias">
+                  <option value="Hokkaido">Hokkaido</option>
+                  <option value="Aomori">Aomori</option>
+                  <option value="Iwate">Iwate</option>
+                  <option value="Miyagi">Miyagi</option>
+                  <option value="Akita">Akita</option>
+                  <option value="Yamagata">Yamagata</option>
+                  <option value="Fukushima">Fukushima</option>
+                  <option value="Ibaraki">Ibaraki</option>
+                  <option value="Tochigi">Tochigi</option>
+                  <option value="Gunma">Gunma</option>
+                  <option value="Saitama">Saitama</option>
+                  <option value="Chiba">Chiba</option>
+                  <option value="Kanagawa">Kanagawa</option>
+                  <option value="Niigata">Niigata</option>
+                  <option value="Toyama">Toyama</option>
+                  <option value="Ishikawa">Ishikawa</option>
+                  <option value="Fukui">Fukui</option>
+                  <option value="Yamanashi">Yamanashi</option>
+                  <option value="Nagano">Nagano</option>
+                  <option value="Gifu">Gifu</option>
+                  <option value="Shizuoka">Shizuoka</option>
+                  <option value="Aichi">Aichi</option>
+                  <option value="Mie">Mie</option>
+                  <option value="Shiga">Shiga</option>
+                  <option value="Hyogo">Hyogo</option>
+                  <option value="Nara">Nara</option>
+                  <option value="Wakayama">Wakayama</option>
+                  <option value="Tottori">Tottori</option>
+                  <option value="Shimane">Shimane</option>
+                  <option value="Okayama">Okayama</option>
+                  <option value="Yamaguchi">Yamaguchi</option>
+                  <option value="Tokushima">Tokushima</option>
+                  <option value="Kagawa">Kagawa</option>
+                  <option value="Ehime">Ehime</option>
+                  <option value="Kochi">Kochi</option>
+                  <option value="Saga">Saga</option>
+                  <option value="Nagasaki">Nagasaki</option>
+                  <option value="Kumamoto">Kumamoto</option>
+                  <option value="Oita">Oita</option>
+                  <option value="Miyazaki">Miyazaki</option>
+                  <option value="Kagoshima">Kagoshima</option>
+                  <option value="Okinawa">Okinawa</option>
                 </optgroup>
-                <optgroup label="Outro" className="bg-background">
-                  <option value="OTHER">Outro</option>
+                <optgroup label="Outro">
+                  <option value="Remoto">Remoto</option>
+                  <option value="Outro">Outro</option>
                 </optgroup>
               </select>
             </div>
-            <Button size="lg" className="w-full md:w-auto rounded-full px-8 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button size="lg" onClick={handleSearch} className="w-full md:w-auto rounded-full px-8 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
               Buscar Vagas
             </Button>
           </div>
@@ -189,7 +201,12 @@ export function Home() {
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <span className="text-sm text-muted-foreground flex items-center mr-2">Buscas populares:</span>
             {["TI & Software", "Engenharia", "Marketing", "Nível N3+", "Inglês Nativo", "Remoto"].map((tag) => (
-              <Badge key={tag} variant="outline" className="hover:bg-primary hover:text-primary-foreground cursor-pointer transition-colors py-1.5 px-4 rounded-none">
+              <Badge
+                key={tag}
+                variant="outline"
+                onClick={() => navigate(`/vagas?q=${encodeURIComponent(tag)}`)}
+                className="hover:bg-primary hover:text-primary-foreground cursor-pointer transition-colors py-1.5 px-4 rounded-none"
+              >
                 {tag}
               </Badge>
             ))}

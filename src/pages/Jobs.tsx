@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams, useNavigate } from "react-router-dom"
 import { Search, MapPin, Briefcase, Filter, ChevronDown, Clock, Building2 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
@@ -30,29 +30,66 @@ interface JobWithCompany {
 }
 
 export function Jobs() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [allJobs, setAllJobs] = useState<JobWithCompany[]>([])
   const [jobs, setJobs] = useState<JobWithCompany[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchInput, setSearchInput] = useState(searchParams.get("q") || "")
+  const [locationInput, setLocationInput] = useState(searchParams.get("location") || "")
+
+  const activeQuery = searchParams.get("q") || ""
+  const activeLocation = searchParams.get("location") || ""
 
   useEffect(() => {
     async function fetchJobs() {
+      setLoading(true)
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('jobs')
           .select('*, companies(id, name, logo_url)')
           .order('is_featured', { ascending: false })
           .order('created_at', { ascending: false })
 
+        if (activeLocation) {
+          query = query.ilike('location', `%${activeLocation}%`)
+        }
+
+        const { data, error } = await query
         if (error) throw error
-        setJobs(data || [])
+        setAllJobs(data || [])
       } catch (error) {
         console.error('Erro ao carregar vagas:', error)
       } finally {
         setLoading(false)
       }
     }
-
     fetchJobs()
-  }, [])
+  }, [activeLocation])
+
+  useEffect(() => {
+    if (!activeQuery) {
+      setJobs(allJobs)
+      return
+    }
+    const q = activeQuery.toLowerCase()
+    setJobs(
+      allJobs.filter(job =>
+        job.title.toLowerCase().includes(q) ||
+        (job.companies?.name || "").toLowerCase().includes(q) ||
+        (job.requirements ?? []).some(r => r.toLowerCase().includes(q)) ||
+        job.location.toLowerCase().includes(q) ||
+        job.work_mode.toLowerCase().includes(q)
+      )
+    )
+  }, [activeQuery, allJobs])
+
+  const handleSearch = () => {
+    const params: Record<string, string> = {}
+    if (searchInput.trim()) params.q = searchInput.trim()
+    if (locationInput) params.location = locationInput
+    setSearchParams(params)
+  }
 
   const formatSalary = (min: number | null, max: number | null) => {
     if (!min && !max) return 'A combinar'
@@ -88,6 +125,9 @@ export function Jobs() {
             <input 
               type="text" 
               placeholder="Cargo, habilidade ou empresa..." 
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleSearch()}
               className="w-full bg-transparent border-none focus:outline-none text-foreground h-12 placeholder:text-muted-foreground"
             />
           </div>
@@ -95,78 +135,94 @@ export function Jobs() {
             <MapPin className="h-5 w-5 text-muted-foreground mr-3" />
             <select 
               name="region"
-              defaultValue=""
+              value={locationInput}
+              onChange={e => setLocationInput(e.target.value)}
               className="w-full bg-transparent border-none focus:outline-none text-foreground h-12 appearance-none cursor-pointer"
             >
-              <option value="" className="bg-background">Todas as Localidades</option>
-              <optgroup label="Região" className="bg-background">
-                <option value="JP-R1">Hokkaido</option>
-                <option value="JP-R2">Tohoku</option>
-                <option value="JP-R3">Kanto</option>
-                <option value="JP-R4">Chubu</option>
-                <option value="JP-R5">Kansai</option>
-                <option value="JP-R6">Chugoku</option>
-                <option value="JP-R7">Shikoku</option>
-                <option value="JP-R8">Kyushu</option>
+              <option value="">Todas as Localidades</option>
+              <optgroup label="Principais cidades">
+                <option value="Tokyo">Tokyo</option>
+                <option value="Osaka">Osaka</option>
+                <option value="Kyoto">Kyoto</option>
+                <option value="Yokohama">Yokohama</option>
+                <option value="Nagoya">Nagoya</option>
+                <option value="Fukuoka">Fukuoka</option>
+                <option value="Sapporo">Sapporo</option>
+                <option value="Kobe">Kobe</option>
+                <option value="Hiroshima">Hiroshima</option>
+                <option value="Sendai">Sendai</option>
               </optgroup>
-              <optgroup label="Província" className="bg-gray-900">
-                <option value="JP-01">Hokkaido</option>
-                <option value="JP-02">Aomori</option>
-                <option value="JP-03">Iwate</option>
-                <option value="JP-04">Miyagi</option>
-                <option value="JP-05">Akita</option>
-                <option value="JP-06">Yamagata</option>
-                <option value="JP-07">Fukushima</option>
-                <option value="JP-08">Ibaraki</option>
-                <option value="JP-09">Tochigi</option>
-                <option value="JP-10">Gunma</option>
-                <option value="JP-11">Saitama</option>
-                <option value="JP-12">Chiba</option>
-                <option value="JP-13">Tokyo</option>
-                <option value="JP-14">Kanagawa</option>
-                <option value="JP-15">Niigata</option>
-                <option value="JP-16">Toyama</option>
-                <option value="JP-17">Ishikawa</option>
-                <option value="JP-18">Fukui</option>
-                <option value="JP-19">Yamanashi</option>
-                <option value="JP-20">Nagano</option>
-                <option value="JP-21">Gifu</option>
-                <option value="JP-22">Shizuoka</option>
-                <option value="JP-23">Aichi</option>
-                <option value="JP-24">Mie</option>
-                <option value="JP-25">Shiga</option>
-                <option value="JP-26">Kyoto</option>
-                <option value="JP-27">Osaka</option>
-                <option value="JP-28">Hyogo</option>
-                <option value="JP-29">Nara</option>
-                <option value="JP-30">Wakayama</option>
-                <option value="JP-31">Tottori</option>
-                <option value="JP-32">Shimane</option>
-                <option value="JP-33">Okayama</option>
-                <option value="JP-34">Hiroshima</option>
-                <option value="JP-35">Yamaguchi</option>
-                <option value="JP-36">Tokushima</option>
-                <option value="JP-37">Kagawa</option>
-                <option value="JP-38">Ehime</option>
-                <option value="JP-39">Kochi</option>
-                <option value="JP-40">Fukuoka</option>
-                <option value="JP-41">Saga</option>
-                <option value="JP-42">Nagasaki</option>
-                <option value="JP-43">Kumamoto</option>
-                <option value="JP-44">Oita</option>
-                <option value="JP-45">Miyazaki</option>
-                <option value="JP-46">Kagoshima</option>
-                <option value="JP-47">Okinawa</option>
+              <optgroup label="Todas as províncias">
+                <option value="Hokkaido">Hokkaido</option>
+                <option value="Aomori">Aomori</option>
+                <option value="Iwate">Iwate</option>
+                <option value="Miyagi">Miyagi</option>
+                <option value="Akita">Akita</option>
+                <option value="Yamagata">Yamagata</option>
+                <option value="Fukushima">Fukushima</option>
+                <option value="Ibaraki">Ibaraki</option>
+                <option value="Tochigi">Tochigi</option>
+                <option value="Gunma">Gunma</option>
+                <option value="Saitama">Saitama</option>
+                <option value="Chiba">Chiba</option>
+                <option value="Kanagawa">Kanagawa</option>
+                <option value="Niigata">Niigata</option>
+                <option value="Toyama">Toyama</option>
+                <option value="Ishikawa">Ishikawa</option>
+                <option value="Fukui">Fukui</option>
+                <option value="Yamanashi">Yamanashi</option>
+                <option value="Nagano">Nagano</option>
+                <option value="Gifu">Gifu</option>
+                <option value="Shizuoka">Shizuoka</option>
+                <option value="Aichi">Aichi</option>
+                <option value="Mie">Mie</option>
+                <option value="Shiga">Shiga</option>
+                <option value="Hyogo">Hyogo</option>
+                <option value="Nara">Nara</option>
+                <option value="Wakayama">Wakayama</option>
+                <option value="Tottori">Tottori</option>
+                <option value="Shimane">Shimane</option>
+                <option value="Okayama">Okayama</option>
+                <option value="Yamaguchi">Yamaguchi</option>
+                <option value="Tokushima">Tokushima</option>
+                <option value="Kagawa">Kagawa</option>
+                <option value="Ehime">Ehime</option>
+                <option value="Kochi">Kochi</option>
+                <option value="Saga">Saga</option>
+                <option value="Nagasaki">Nagasaki</option>
+                <option value="Kumamoto">Kumamoto</option>
+                <option value="Oita">Oita</option>
+                <option value="Miyazaki">Miyazaki</option>
+                <option value="Kagoshima">Kagoshima</option>
+                <option value="Okinawa">Okinawa</option>
               </optgroup>
-              <optgroup label="Outro" className="bg-gray-900">
-                <option value="OTHER">Outro</option>
+              <optgroup label="Outro">
+                <option value="Remoto">Remoto</option>
+                <option value="Outro">Outro</option>
               </optgroup>
             </select>
           </div>
-          <Button size="lg" className="w-full md:w-auto rounded-full px-8 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button size="lg" onClick={handleSearch} className="w-full md:w-auto rounded-full px-8 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
             Buscar
           </Button>
         </div>
+        {(activeQuery || activeLocation) && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Filtrando por:</span>
+            {activeQuery && (
+              <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-sm px-3 py-1 rounded-full">
+                "{activeQuery}"
+                <button onClick={() => { setSearchInput(""); setSearchParams(activeLocation ? { location: activeLocation } : {}); }} className="ml-1 hover:text-primary/60">×</button>
+              </span>
+            )}
+            {activeLocation && (
+              <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-sm px-3 py-1 rounded-full">
+                {activeLocation}
+                <button onClick={() => { setLocationInput(""); setSearchParams(activeQuery ? { q: activeQuery } : {}); }} className="ml-1 hover:text-primary/60">×</button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -229,7 +285,12 @@ export function Jobs() {
         {/* Job List */}
         <div className="flex-1 space-y-4">
           <div className="flex items-center justify-between mb-6">
-            <p className="text-sm text-gray-400">Mostrando <span className="text-white font-medium">{jobs.length}</span> vagas</p>
+            <p className="text-sm text-muted-foreground">
+              Mostrando <span className="text-foreground font-medium">{jobs.length}</span> vaga{jobs.length !== 1 ? "s" : ""}
+              {(activeQuery || activeLocation) && allJobs.length !== jobs.length && (
+                <span className="ml-1">de {allJobs.length} total</span>
+              )}
+            </p>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-400">Ordenar por:</span>
               <Button variant="ghost" size="sm" className="h-8 rounded-full bg-white/5 border border-white/10">
