@@ -81,7 +81,7 @@ export function JobDetail() {
       try {
         const { data, error } = await supabase
           .from('jobs')
-          .select('*, companies(id, name, logo_url, description, website, industry, email, phone, linkedin, instagram)')
+          .select('*, companies(id, name, logo_url, description, website, industry)')
           .eq('id', id)
           .single()
 
