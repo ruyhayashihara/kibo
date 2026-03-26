@@ -19,7 +19,13 @@ export default defineConfig(({mode}) => {
       port: 5000,
       host: '0.0.0.0',
       allowedHosts: true,
-      hmr: process.env.DISABLE_HMR !== 'true',
+      hmr: {
+        clientPort: 443,
+        protocol: 'wss',
+      },
+      watch: {
+        ignored: ['**/.local/**', '**/.cache/**', '**/node_modules/**'],
+      },
     },
   };
 });
