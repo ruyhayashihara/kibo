@@ -1,24 +1,19 @@
 import React, { useState, useEffect } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import {
   LayoutDashboard, User, Settings, LogOut, Briefcase,
   CheckCircle2, Circle, Send, Clock, Building2, MapPin,
-  Edit2, Save, X, Camera, Phone, FileText, Globe, Linkedin,
-  AlertCircle
+  Edit2, Save, X, Camera, Phone, FileText, AlertCircle,
+  Calendar, Globe2, ShieldCheck, Languages, Car
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Badge } from "@/src/components/ui/badge"
 import { supabase } from "@/src/lib/supabase"
 import { useAuth } from "../context/AuthContext"
-
-interface UserProfile {
-  full_name: string | null
-  avatar_url: string | null
-  bio: string | null
-  location: string | null
-  phone: string | null
-  completion_percentage: number
-}
+import {
+  CandidateProfileFull, calcProfileCompletion, getMissingRequiredFields,
+  JAPAN_PROVINCES, JLPT_LEVELS, VISA_TYPES, RELOCATION_OPTIONS, CALL_TIME_OPTIONS
+} from "@/src/lib/profileData"
 
 interface ApplicationWithJob {
   id: string
@@ -45,33 +40,93 @@ function getInitials(name: string | null) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 }
 
-function calcCompletion(p: Partial<UserProfile>) {
-  const fields = [p.full_name, p.location, p.phone, p.bio]
-  const filled = fields.filter(f => f && String(f).trim()).length
-  return Math.round((filled / fields.length) * 100)
+const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  pending:   { label: "Enviada",         color: "bg-yellow-500/20 text-yellow-500 border-yellow-500/30" },
+  viewed:    { label: "Visualizada",     color: "bg-blue-500/20 text-blue-500 border-blue-500/30" },
+  interview: { label: "Entrevista",      color: "bg-purple-500/20 text-purple-500 border-purple-500/30" },
+  accepted:  { label: "Aceita",          color: "bg-green-500/20 text-green-500 border-green-500/30" },
+  rejected:  { label: "Não selecionado", color: "bg-red-500/20 text-red-500 border-red-500/30" },
 }
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending:   { label: "Enviada",           color: "bg-yellow-500/20 text-yellow-500 border-yellow-500/30" },
-  viewed:    { label: "Visualizada",       color: "bg-blue-500/20 text-blue-500 border-blue-500/30" },
-  interview: { label: "Entrevista",        color: "bg-purple-500/20 text-purple-500 border-purple-500/30" },
-  accepted:  { label: "Aceita",            color: "bg-green-500/20 text-green-500 border-green-500/30" },
-  rejected:  { label: "Não selecionado",   color: "bg-red-500/20 text-red-500 border-red-500/30" },
+const REQUIRED_LABELS: Record<string, string> = {
+  full_name: "Nome Completo",
+  birth_date: "Data de Nascimento",
+  phone: "Telefone",
+  city: "Cidade",
+  province: "Província",
+  gender: "Sexo",
+  can_relocate: "Disponibilidade p/ mudança",
+  jlpt_level: "Nível de Japonês",
+  nationality: "Nacionalidade",
+  visa_type: "Tipo de Visto",
 }
+
+// ─── Shared field renderer ───────────────────────────────────────────────────
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-sm text-foreground">{value || <span className="italic text-muted-foreground">Não preenchido</span>}</p>
+    </div>
+  )
+}
+
+function TextInput({ label, required, value, placeholder, onChange }: {
+  label: string; required?: boolean; value: string;
+  placeholder?: string; onChange: (v: string) => void
+}) {
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      <input
+        className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+    </div>
+  )
+}
+
+function SelectInput({ label, required, value, options, onChange }: {
+  label: string; required?: boolean; value: string;
+  options: { value: string; label: string }[]; onChange: (v: string) => void
+}) {
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      <select
+        className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      >
+        <option value="">Selecione...</option>
+        {options.map(o => <option key={o.value} value={o.value} className="bg-background">{o.label}</option>)}
+      </select>
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Dashboard() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, signOut } = useAuth()
 
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profile, setProfile] = useState<CandidateProfileFull | null>(null)
   const [applications, setApplications] = useState<ApplicationWithJob[]>([])
   const [totalJobs, setTotalJobs] = useState(0)
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview")
   const [loading, setLoading] = useState(true)
 
-  // Profile editing state
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState<Partial<UserProfile>>({})
+  const [draft, setDraft] = useState<Partial<CandidateProfileFull>>({})
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -81,7 +136,7 @@ export function Dashboard() {
       try {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("full_name, avatar_url, bio, location, phone, completion_percentage")
+          .select("*")
           .eq("id", user!.id)
           .maybeSingle()
         setProfile(profileData || null)
@@ -97,8 +152,6 @@ export function Dashboard() {
           .from("jobs")
           .select("*", { count: "exact", head: true })
         setTotalJobs(count || 0)
-      } catch (err) {
-        console.error("Erro ao carregar dashboard:", err)
       } finally {
         setLoading(false)
       }
@@ -107,63 +160,56 @@ export function Dashboard() {
   }, [user])
 
   const startEditing = () => {
-    setDraft({
-      full_name: profile?.full_name || "",
-      bio: profile?.bio || "",
-      location: profile?.location || "",
-      phone: profile?.phone || "",
-      avatar_url: profile?.avatar_url || "",
-    })
+    setDraft({ ...(profile || {}) })
     setEditing(true)
     setSaveSuccess(false)
   }
 
-  const cancelEditing = () => {
-    setEditing(false)
-    setDraft({})
-  }
+  const cancelEditing = () => { setEditing(false); setDraft({}) }
 
   const saveProfile = async () => {
     if (!user) return
     setSaving(true)
     try {
-      const completion = calcCompletion(draft)
+      const completion = calcProfileCompletion(draft)
       const payload = { ...draft, completion_percentage: completion }
-
-      // Upsert — cria se não existir, atualiza se existir
       const { error } = await supabase
         .from("profiles")
         .upsert({ id: user.id, ...payload }, { onConflict: "id" })
-
       if (error) throw error
-
-      setProfile(prev => ({ ...(prev || {} as UserProfile), ...payload, completion_percentage: completion }))
+      setProfile(prev => ({ ...(prev || {} as CandidateProfileFull), ...payload, completion_percentage: completion }))
       setEditing(false)
       setDraft({})
       setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
-    } catch (err: any) {
-      console.error("Erro ao salvar perfil:", err)
+      setTimeout(() => setSaveSuccess(false), 4000)
+    } catch (err) {
+      console.error("Erro ao salvar:", err)
     } finally {
       setSaving(false)
     }
   }
 
-  const firstName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "você"
-  const completion = profile?.completion_percentage ?? 0
+  const set = (field: keyof CandidateProfileFull) => (v: string) =>
+    setDraft(d => ({ ...d, [field]: v || null }))
 
-  const completionItems = [
-    { label: "Nome completo",      done: !!profile?.full_name },
-    { label: "Localização",        done: !!profile?.location },
-    { label: "Telefone",           done: !!profile?.phone },
-    { label: "Apresentação pessoal", done: !!profile?.bio },
-  ]
+  const val = (field: keyof CandidateProfileFull): string =>
+    (draft[field] as string) ?? ""
+
+  const firstName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "você"
+  const completion = profile ? calcProfileCompletion(profile) : 0
+  const missing = profile ? getMissingRequiredFields(profile) : Object.values(REQUIRED_LABELS)
+
+  const requiredItems = Object.entries(REQUIRED_LABELS).map(([key, label]) => ({
+    label,
+    done: !!(profile?.[key as keyof CandidateProfileFull] &&
+      String(profile[key as keyof CandidateProfileFull]).trim())
+  }))
 
   const tabs = [
-    { id: "overview",      label: "Visão geral",  icon: LayoutDashboard },
-    { id: "applications",  label: "Candidaturas", icon: Send,    count: applications.length },
-    { id: "profile",       label: "Meu perfil",   icon: User },
-    { id: "settings",      label: "Configurações", icon: Settings },
+    { id: "overview",     label: "Visão geral",   icon: LayoutDashboard },
+    { id: "applications", label: "Candidaturas",  icon: Send, count: applications.length },
+    { id: "profile",      label: "Meu perfil",    icon: User },
+    { id: "settings",     label: "Configurações", icon: Settings },
   ]
 
   return (
@@ -175,18 +221,17 @@ export function Dashboard() {
           <div className="glass-panel rounded-2xl p-6 border-border sticky top-24">
             <div className="flex flex-col items-center text-center mb-8">
               <div className="h-20 w-20 rounded-full border-2 border-primary/40 mb-4 overflow-hidden flex items-center justify-center bg-muted shadow-sm">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="text-2xl font-bold text-primary">{getInitials(profile?.full_name ?? null)}</span>
-                )}
+                {profile?.avatar_url
+                  ? <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                  : <span className="text-2xl font-bold text-primary">{getInitials(profile?.full_name ?? null)}</span>
+                }
               </div>
               <h3 className="font-semibold text-lg text-foreground leading-tight">
                 {profile?.full_name || <span className="text-muted-foreground italic text-sm">Sem nome</span>}
               </h3>
-              {profile?.location && (
+              {profile?.province && (
                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-center">
-                  <MapPin className="h-3 w-3" />{profile.location}
+                  <MapPin className="h-3 w-3" />{profile.city ? `${profile.city}, ` : ""}{profile.province}
                 </p>
               )}
               <div className="mt-2 w-full bg-muted rounded-full h-1.5 overflow-hidden">
@@ -236,22 +281,25 @@ export function Dashboard() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  { icon: Send,     color: "primary", label: "Candidaturas",      value: loading ? "—" : applications.length },
-                  { icon: Briefcase, color: "emerald", label: "Vagas disponíveis", value: loading ? "—" : totalJobs },
-                  { icon: User,     color: "primary", label: "Perfil completo",   value: loading ? "—" : `${completion}%` },
-                ].map(({ icon: Icon, color, label, value }) => (
-                  <div key={label} className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
-                    <div className={`h-12 w-12 rounded-full bg-${color}-500/20 flex items-center justify-center text-${color}-500`}>
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground font-medium">{label}</p>
-                      <p className="text-2xl font-bold text-foreground">{value}</p>
-                    </div>
-                  </div>
-                ))}
+                <StatCard icon={Send} color="primary" label="Candidaturas" value={loading ? "—" : applications.length} />
+                <StatCard icon={Briefcase} color="emerald" label="Vagas disponíveis" value={loading ? "—" : totalJobs} />
+                <StatCard icon={User} color="primary" label="Perfil completo" value={loading ? "—" : `${completion}%`} />
               </div>
+
+              {/* Alerta de perfil incompleto */}
+              {!loading && missing.length > 0 && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                  <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground mb-1">Perfil incompleto — {missing.length} campo(s) obrigatório(s) faltando</p>
+                    <p className="text-xs text-muted-foreground mb-2">Campos obrigatórios para se candidatar: {missing.slice(0, 4).join(", ")}{missing.length > 4 ? ` e mais ${missing.length - 4}...` : ""}</p>
+                    <Button variant="outline" size="sm" className="rounded-full border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+                      onClick={() => { setActiveTab("profile"); startEditing() }}>
+                      Completar agora
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Completion card */}
               <div className="glass-panel rounded-2xl p-6 md:p-8 border-border relative overflow-hidden">
@@ -265,25 +313,30 @@ export function Dashboard() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-primary font-medium">{completion}% concluído</span>
-                        <span className="text-muted-foreground">{completionItems.filter(i => !i.done).length} etapa(s) restante(s)</span>
+                        <span className="text-muted-foreground">{missing.length} campo(s) restante(s)</span>
                       </div>
                       <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${completion}%` }} />
                       </div>
                     </div>
                   </div>
-                  <div className="w-full md:w-64 space-y-3 bg-muted p-4 rounded-xl border border-border">
-                    {completionItems.map(({ label, done }) => (
-                      <div key={label} className="flex items-center space-x-3 text-sm">
-                        {done ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /> : <Circle className="h-5 w-5 text-muted-foreground shrink-0" />}
-                        <span className={done ? "text-muted-foreground line-through" : "text-foreground font-medium"}>{label}</span>
-                      </div>
-                    ))}
+                  <div className="w-full md:w-72 bg-muted p-4 rounded-xl border border-border">
+                    <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                      {requiredItems.map(({ label, done }) => (
+                        <div key={label} className="flex items-center gap-2 text-sm">
+                          {done
+                            ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                            : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          <span className={done ? "text-muted-foreground line-through" : "text-foreground"}>{label}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 {completion < 100 && (
                   <div className="mt-4 relative z-10">
-                    <Button variant="outline" size="sm" className="rounded-full" onClick={() => { setActiveTab("profile"); startEditing() }}>
+                    <Button variant="outline" size="sm" className="rounded-full"
+                      onClick={() => { setActiveTab("profile"); startEditing() }}>
                       Completar perfil agora
                     </Button>
                   </div>
@@ -308,7 +361,7 @@ export function Dashboard() {
             <div className="space-y-6">
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">Minhas Candidaturas</h1>
-                <p className="text-muted-foreground">{applications.length} candidatura(s) enviada(s) no total.</p>
+                <p className="text-muted-foreground">{applications.length} candidatura(s) no total.</p>
               </div>
               <ApplicationList applications={applications} loading={loading} />
             </div>
@@ -320,14 +373,16 @@ export function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">Meu Perfil</h1>
-                  <p className="text-muted-foreground">Estes dados são enviados às empresas quando você se candidata.</p>
+                  <p className="text-muted-foreground text-sm">
+                    Dados enviados às empresas ao se candidatar. Campos com <span className="text-red-400">*</span> são obrigatórios.
+                  </p>
                 </div>
                 {!editing ? (
-                  <Button variant="outline" className="rounded-full gap-2" onClick={startEditing}>
+                  <Button variant="outline" className="rounded-full gap-2 shrink-0" onClick={startEditing}>
                     <Edit2 className="h-4 w-4" /> Editar
                   </Button>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <Button variant="ghost" className="rounded-full gap-2 text-muted-foreground" onClick={cancelEditing} disabled={saving}>
                       <X className="h-4 w-4" /> Cancelar
                     </Button>
@@ -341,117 +396,210 @@ export function Dashboard() {
               {saveSuccess && (
                 <div className="flex items-center gap-2 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-sm">
                   <CheckCircle2 className="h-5 w-5 shrink-0" />
-                  Perfil atualizado com sucesso! Os dados serão enviados nas próximas candidaturas.
+                  Perfil atualizado! Os dados serão enviados nas próximas candidaturas.
                 </div>
               )}
 
-              {/* Avatar */}
-              <div className="glass-panel rounded-2xl p-6 border-border">
-                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Camera className="h-5 w-5 text-primary" /> Foto de Perfil
-                </h3>
+              {/* ── Seção: Foto de Perfil ── */}
+              <ProfileSection icon={<Camera className="h-5 w-5 text-primary" />} title="Foto de Perfil">
                 <div className="flex items-center gap-6">
                   <div className="h-20 w-20 rounded-full border-2 border-primary/40 overflow-hidden flex items-center justify-center bg-muted shrink-0">
-                    {(editing ? draft.avatar_url : profile?.avatar_url) ? (
-                      <img src={editing ? draft.avatar_url! : profile!.avatar_url!} alt="Avatar" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-2xl font-bold text-primary">{getInitials(editing ? (draft.full_name ?? null) : (profile?.full_name ?? null))}</span>
-                    )}
+                    {(editing ? draft.avatar_url : profile?.avatar_url)
+                      ? <img src={editing ? draft.avatar_url! : profile!.avatar_url!} alt="Avatar" className="h-full w-full object-cover" />
+                      : <span className="text-2xl font-bold text-primary">{getInitials(editing ? (draft.full_name ?? null) : (profile?.full_name ?? null))}</span>
+                    }
                   </div>
                   <div className="flex-1">
-                    {editing ? (
-                      <input
-                        className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        placeholder="URL da foto (ex: https://...)"
-                        value={draft.avatar_url || ""}
-                        onChange={e => setDraft(d => ({ ...d, avatar_url: e.target.value }))}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        {profile?.avatar_url ? "Foto cadastrada" : "Nenhuma foto cadastrada"}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">Cole o link de uma imagem pública (Google Photos, Gravatar, etc.)</p>
+                    {editing
+                      ? <input className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          placeholder="URL da foto (ex: https://i.imgur.com/xxx.jpg)"
+                          value={val("avatar_url")}
+                          onChange={e => set("avatar_url")(e.target.value)}
+                        />
+                      : <p className="text-sm text-muted-foreground">{profile?.avatar_url ? "Foto cadastrada" : "Nenhuma foto cadastrada"}</p>
+                    }
+                    <p className="text-xs text-muted-foreground mt-1">Cole o link de uma imagem pública (Imgur, Google Photos, Gravatar, etc.)</p>
                   </div>
                 </div>
-              </div>
+              </ProfileSection>
 
-              {/* Dados pessoais */}
-              <div className="glass-panel rounded-2xl p-6 border-border space-y-5">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" /> Dados Pessoais
-                </h3>
-
-                <ProfileField
-                  label="Nome completo"
-                  value={editing ? (draft.full_name ?? "") : (profile?.full_name ?? "")}
-                  editing={editing}
-                  placeholder="Ex: Maria Tanaka"
-                  onChange={v => setDraft(d => ({ ...d, full_name: v }))}
-                  required
-                />
-
-                <ProfileField
-                  label="Localização atual"
-                  icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
-                  value={editing ? (draft.location ?? "") : (profile?.location ?? "")}
-                  editing={editing}
-                  placeholder="Ex: Osaka, Japão"
-                  onChange={v => setDraft(d => ({ ...d, location: v }))}
-                />
-
-                <ProfileField
-                  label="Telefone / WhatsApp"
-                  icon={<Phone className="h-4 w-4 text-muted-foreground" />}
-                  value={editing ? (draft.phone ?? "") : (profile?.phone ?? "")}
-                  editing={editing}
-                  placeholder="Ex: +55 11 99999-9999 ou +81 080-0000-0000"
-                  onChange={v => setDraft(d => ({ ...d, phone: v }))}
-                />
-
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-1">
-                    <FileText className="h-4 w-4" /> Apresentação pessoal
-                  </label>
+              {/* ── Seção: Dados Pessoais ── */}
+              <ProfileSection icon={<User className="h-5 w-5 text-primary" />} title="Dados Pessoais">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {editing ? (
-                    <textarea
-                      rows={4}
-                      className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                      placeholder="Fale sobre você: experiência, objetivos, idiomas, visto, etc."
-                      value={draft.bio ?? ""}
-                      onChange={e => setDraft(d => ({ ...d, bio: e.target.value }))}
-                    />
+                    <>
+                      <TextInput label="Nome Completo" required value={val("full_name")} placeholder="Ex: Maria Tanaka" onChange={set("full_name")} />
+                      <div>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                          Data de Nascimento<span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <input type="date"
+                          className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          value={val("birth_date")}
+                          onChange={e => set("birth_date")(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">E-mail</label>
+                        <input disabled className="w-full bg-muted/50 border border-border/50 rounded-xl px-3 py-2 text-sm text-muted-foreground cursor-not-allowed" value={user?.email || ""} />
+                        <p className="text-xs text-muted-foreground mt-1">Definido pela sua conta — não editável aqui.</p>
+                      </div>
+                      <SelectInput label="Sexo" required value={val("gender")}
+                        options={[{ value: "masculino", label: "Masculino" }, { value: "feminino", label: "Feminino" }]}
+                        onChange={set("gender")} />
+                      <TextInput label="Nacionalidade" required value={val("nationality")} placeholder="Ex: Brasileira" onChange={set("nationality")} />
+                    </>
                   ) : (
-                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                      {profile?.bio || <span className="text-muted-foreground italic">Não preenchido</span>}
-                    </p>
+                    <>
+                      <Field label="Nome Completo" value={profile?.full_name} />
+                      <Field label="Data de Nascimento"
+                        value={profile?.birth_date ? new Date(profile.birth_date + "T00:00:00").toLocaleDateString("pt-BR") : null} />
+                      <Field label="E-mail" value={user?.email} />
+                      <Field label="Sexo" value={profile?.gender === "masculino" ? "Masculino" : profile?.gender === "feminino" ? "Feminino" : profile?.gender} />
+                      <Field label="Nacionalidade" value={profile?.nationality} />
+                    </>
                   )}
                 </div>
-              </div>
+              </ProfileSection>
 
-              {/* Info sobre candidatura */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20">
-                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <div className="text-sm text-foreground/80">
-                  <p className="font-medium text-foreground mb-1">Como seus dados são usados</p>
-                  <p>Ao se candidatar a uma vaga, seu <strong>nome</strong>, <strong>telefone</strong>, <strong>localização</strong> e <strong>apresentação</strong> são exibidos junto com sua candidatura. Mantenha essas informações atualizadas para aumentar suas chances.</p>
+              {/* ── Seção: Contato ── */}
+              <ProfileSection icon={<Phone className="h-5 w-5 text-primary" />} title="Contato">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {editing ? (
+                    <>
+                      <TextInput label="Seu Telefone" required value={val("phone")} placeholder="Ex: 090-0000-0000" onChange={set("phone")} />
+                      <div>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                          Usa WhatsApp? Se sim, deixe o número
+                        </label>
+                        <input className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          placeholder="Ex: +81-90-0000-0000"
+                          value={val("whatsapp")}
+                          onChange={e => set("whatsapp")(e.target.value)}
+                        />
+                      </div>
+                      <SelectInput label="Melhor horário para ligar?" required value={val("best_call_time")}
+                        options={CALL_TIME_OPTIONS}
+                        onChange={set("best_call_time")} />
+                    </>
+                  ) : (
+                    <>
+                      <Field label="Telefone" value={profile?.phone} />
+                      <Field label="WhatsApp" value={profile?.whatsapp} />
+                      <Field label="Melhor horário p/ ligar"
+                        value={CALL_TIME_OPTIONS.find(o => o.value === profile?.best_call_time)?.label} />
+                    </>
+                  )}
                 </div>
-              </div>
+              </ProfileSection>
 
-              {/* Completion resumo */}
+              {/* ── Seção: Localização ── */}
+              <ProfileSection icon={<MapPin className="h-5 w-5 text-primary" />} title="Localização">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {editing ? (
+                    <>
+                      <TextInput label="Cidade em que reside" required value={val("city")} placeholder="Ex: Osaka" onChange={set("city")} />
+                      <div>
+                        <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                          Província em que reside<span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <select className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                          value={val("province")} onChange={e => set("province")(e.target.value)}>
+                          <option value="">Selecione a província...</option>
+                          {JAPAN_PROVINCES.map(p => <option key={p} value={p} className="bg-background">{p}</option>)}
+                        </select>
+                      </div>
+                      <SelectInput label="Pode mudar?" required value={val("can_relocate")}
+                        options={RELOCATION_OPTIONS} onChange={set("can_relocate")} />
+                    </>
+                  ) : (
+                    <>
+                      <Field label="Cidade" value={profile?.city} />
+                      <Field label="Província" value={profile?.province} />
+                      <Field label="Disponibilidade p/ mudança"
+                        value={RELOCATION_OPTIONS.find(o => o.value === profile?.can_relocate)?.label} />
+                    </>
+                  )}
+                </div>
+              </ProfileSection>
+
+              {/* ── Seção: Idioma & Visto ── */}
+              <ProfileSection icon={<Languages className="h-5 w-5 text-primary" />} title="Idioma & Visto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {editing ? (
+                    <>
+                      <SelectInput label="Nível de Japonês" required value={val("jlpt_level")}
+                        options={JLPT_LEVELS} onChange={set("jlpt_level")} />
+                      <SelectInput label="Tipo de Visto" required value={val("visa_type")}
+                        options={VISA_TYPES} onChange={set("visa_type")} />
+                      {val("visa_type") === "outros" && (
+                        <div className="md:col-span-2">
+                          <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                            Especifique seu visto
+                          </label>
+                          <input className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            placeholder="Descreva o tipo de visto que possui"
+                            value={val("visa_other")}
+                            onChange={e => set("visa_other")(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Field label="Nível de Japonês"
+                        value={JLPT_LEVELS.find(l => l.value === profile?.jlpt_level)?.label ?? profile?.jlpt_level} />
+                      <Field label="Tipo de Visto"
+                        value={profile?.visa_type === "outros"
+                          ? `Outros: ${profile.visa_other || "—"}`
+                          : VISA_TYPES.find(v => v.value === profile?.visa_type)?.label ?? profile?.visa_type
+                        } />
+                    </>
+                  )}
+                </div>
+              </ProfileSection>
+
+              {/* ── Seção: Apresentação Pessoal ── */}
+              <ProfileSection icon={<FileText className="h-5 w-5 text-primary" />} title="Apresentação Pessoal">
+                {editing ? (
+                  <textarea rows={5}
+                    className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    placeholder="Fale sobre sua experiência profissional, objetivos, idiomas que fala, visto, hobbies relevantes, etc."
+                    value={val("bio")}
+                    onChange={e => set("bio")(e.target.value)}
+                  />
+                ) : (
+                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                    {profile?.bio || <span className="italic text-muted-foreground">Não preenchido</span>}
+                  </p>
+                )}
+              </ProfileSection>
+
+              {/* ── Progresso ── */}
               <div className="glass-panel rounded-2xl p-6 border-border">
-                <h3 className="font-semibold text-foreground mb-4">Progresso do perfil</h3>
-                <div className="h-2 w-full bg-muted rounded-full overflow-hidden mb-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-foreground">Progresso do perfil</h3>
+                  <span className="text-sm font-bold text-primary">{completion}%</span>
+                </div>
+                <div className="h-2 w-full bg-muted rounded-full overflow-hidden mb-4">
                   <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${completion}%` }} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {completionItems.map(({ label, done }) => (
+                  {requiredItems.map(({ label, done }) => (
                     <div key={label} className="flex items-center gap-2 text-sm">
                       {done ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
                       <span className={done ? "text-muted-foreground line-through" : "text-foreground"}>{label}</span>
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Info candidatura */}
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20">
+                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground/80">
+                  <strong className="text-foreground">Como seus dados são usados:</strong> ao se candidatar a uma vaga, todas as informações deste perfil são enviadas automaticamente para a empresa. Mantenha seus dados sempre atualizados para aumentar suas chances.
+                </p>
               </div>
             </div>
           )}
@@ -470,11 +618,8 @@ export function Dashboard() {
                   <p className="text-foreground mt-1">{user?.email}</p>
                 </div>
                 <hr className="border-border" />
-                <Button
-                  variant="outline"
-                  className="rounded-full text-red-400 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40"
-                  onClick={async () => { await signOut(); navigate("/login") }}
-                >
+                <Button variant="outline" className="rounded-full text-red-400 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40"
+                  onClick={async () => { await signOut(); navigate("/login") }}>
                   <LogOut className="h-4 w-4 mr-2" /> Sair da conta
                 </Button>
               </div>
@@ -487,62 +632,49 @@ export function Dashboard() {
   )
 }
 
-// ── Sub-componentes ──
+// ─── Sub-componentes ─────────────────────────────────────────────────────────
 
-function ProfileField({
-  label, icon, value, editing, placeholder, onChange, required
-}: {
-  label: string
-  icon?: React.ReactNode
-  value: string
-  editing: boolean
-  placeholder: string
-  onChange: (v: string) => void
-  required?: boolean
-}) {
+function ProfileSection({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-1">
-        {icon} {label} {required && <span className="text-red-400">*</span>}
-      </label>
-      {editing ? (
-        <input
-          className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          placeholder={placeholder}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-        />
-      ) : (
-        <p className="text-sm text-foreground">
-          {value || <span className="text-muted-foreground italic">Não preenchido</span>}
-        </p>
-      )}
+    <div className="glass-panel rounded-2xl p-6 border-border space-y-5">
+      <h3 className="font-semibold text-foreground flex items-center gap-2">{icon}{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function StatCard({ icon: Icon, color, label, value }: { icon: any; color: string; label: string; value: any }) {
+  return (
+    <div className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
+      <div className={`h-12 w-12 rounded-full bg-${color}-500/20 flex items-center justify-center text-${color}-500`}>
+        <Icon className="h-6 w-6" />
+      </div>
+      <div>
+        <p className="text-sm text-muted-foreground font-medium">{label}</p>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
+      </div>
     </div>
   )
 }
 
 function ApplicationList({ applications, loading }: { applications: ApplicationWithJob[]; loading: boolean }) {
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+  if (loading) return (
+    <div className="space-y-4">
+      {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+    </div>
+  )
+  if (applications.length === 0) return (
+    <div className="glass-panel rounded-xl p-8 border-border text-center">
+      <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+        <Send className="h-6 w-6 text-muted-foreground" />
       </div>
-    )
-  }
-  if (applications.length === 0) {
-    return (
-      <div className="glass-panel rounded-xl p-8 border-border text-center">
-        <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-          <Send className="h-6 w-6 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-medium text-foreground mb-1">Nenhuma candidatura ainda</h3>
-        <p className="text-muted-foreground mb-4">Você ainda não se candidatou a nenhuma vaga.</p>
-        <Button variant="outline" className="rounded-full border-border" asChild>
-          <Link to="/vagas">Explorar Vagas</Link>
-        </Button>
-      </div>
-    )
-  }
+      <h3 className="text-lg font-medium text-foreground mb-1">Nenhuma candidatura ainda</h3>
+      <p className="text-muted-foreground mb-4">Você ainda não se candidatou a nenhuma vaga.</p>
+      <Button variant="outline" className="rounded-full border-border" asChild>
+        <Link to="/vagas">Explorar Vagas</Link>
+      </Button>
+    </div>
+  )
   return (
     <div className="space-y-4">
       {applications.map(app => {
@@ -559,13 +691,10 @@ function ApplicationList({ applications, loading }: { applications: ApplicationW
                 : initials}
             </div>
             <div className="flex-1 min-w-0">
-              {job ? (
-                <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block">
-                  {job.title}
-                </Link>
-              ) : (
-                <p className="text-base font-semibold text-foreground/60">Vaga removida</p>
-              )}
+              {job
+                ? <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block">{job.title}</Link>
+                : <p className="text-base font-semibold text-foreground/60">Vaga removida</p>
+              }
               <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
                 {job?.companies?.name && <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{job.companies.name}</span>}
                 {job?.location && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{job.location}</span>}

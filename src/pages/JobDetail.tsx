@@ -3,13 +3,17 @@ import { Link, useParams, useNavigate } from "react-router-dom"
 import {
   MapPin, Briefcase, Building2, Clock, Globe, GraduationCap,
   ChevronLeft, Share2, BookmarkPlus, ExternalLink, Mail, Phone,
-  Linkedin, Instagram, User, Edit2, Check, X, Send, CheckCircle
+  Linkedin, Instagram, User, Send, CheckCircle, AlertCircle, Edit2
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent } from "@/src/components/ui/card"
 import { Badge } from "@/src/components/ui/badge"
 import { supabase } from "@/src/lib/supabase"
 import { useAuth } from "@/src/context/AuthContext"
+import {
+  CandidateProfileFull, getMissingRequiredFields,
+  JLPT_LEVELS, VISA_TYPES, RELOCATION_OPTIONS, CALL_TIME_OPTIONS
+} from "@/src/lib/profileData"
 
 type TabId = "descricao" | "empresa" | "candidatar"
 
@@ -46,14 +50,17 @@ interface JobDetailData {
   } | null
 }
 
-interface CandidateProfile {
-  id: string
-  full_name: string
-  bio: string | null
-  location: string | null
-  phone: string | null
-  avatar_url: string | null
-  completion_percentage: number
+type CandidateProfile = CandidateProfileFull & { id: string }
+
+function ProfileRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-sm text-foreground font-medium">
+        {value || <span className="italic text-red-400 font-normal">Não preenchido</span>}
+      </p>
+    </div>
+  )
 }
 
 export function JobDetail() {
@@ -68,9 +75,6 @@ export function JobDetail() {
 
   const [profile, setProfile] = useState<CandidateProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [editedProfile, setEditedProfile] = useState<Partial<CandidateProfile>>({})
-  const [savingProfile, setSavingProfile] = useState(false)
 
   const [applied, setApplied] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -123,10 +127,7 @@ export function JobDetail() {
           .select('*')
           .eq('id', user!.id)
           .maybeSingle()
-        if (data) {
-          setProfile(data)
-          setEditedProfile(data)
-        }
+        if (data) setProfile(data)
       } finally {
         setProfileLoading(false)
       }
@@ -145,18 +146,6 @@ export function JobDetail() {
   const handleApplyNow = () => {
     if (!user) { navigate(`/login?redirect=/vagas/${id}`); return }
     setActiveTab("candidatar")
-  }
-
-  const handleSaveProfile = async () => {
-    if (!user) return
-    setSavingProfile(true)
-    try {
-      await supabase.from('profiles').update(editedProfile).eq('id', user.id)
-      setProfile(prev => prev ? { ...prev, ...editedProfile } : null)
-      setEditing(false)
-    } finally {
-      setSavingProfile(false)
-    }
   }
 
   const handleSubmitApplication = async () => {
@@ -424,7 +413,6 @@ export function JobDetail() {
                   <CheckCircle className="h-14 w-14 mx-auto mb-4 text-green-500" />
                   <h3 className="text-xl font-semibold text-foreground mb-2">Candidatura Enviada!</h3>
                   <p className="text-muted-foreground mb-6">Sua candidatura foi registrada. A empresa entrará em contato pelos canais abaixo.</p>
-                  {/* Contact buttons after applying */}
                   <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
                     {company?.email && (
                       <a href={`mailto:${company.email}?subject=Candidatura: ${job.title}&body=Olá, me candidatei para a vaga de ${job.title} e gostaria de confirmar o recebimento.`}>
@@ -450,135 +438,138 @@ export function JobDetail() {
                 </div>
               ) : (
                 <>
-                  {/* Profile card */}
-                  <div className="glass-panel rounded-2xl p-6 border-border">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-foreground">Seus Dados</h3>
-                      {!editing ? (
-                        <Button variant="ghost" size="sm" className="gap-2 rounded-full" onClick={() => { setEditing(true); setEditedProfile(profile || {}) }}>
-                          <Edit2 className="h-4 w-4" /> Editar
-                        </Button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" className="rounded-full text-green-500" onClick={handleSaveProfile} disabled={savingProfile}>
-                            <Check className="h-4 w-4" /> {savingProfile ? 'Salvando...' : 'Salvar'}
-                          </Button>
-                          <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground" onClick={() => setEditing(false)}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
+                  {profileLoading ? (
+                    <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted rounded-xl" />)}
                     </div>
+                  ) : (() => {
+                    const missingFields = getMissingRequiredFields(profile || {})
+                    const canApply = missingFields.length === 0
 
-                    {profileLoading ? (
-                      <div className="space-y-3 animate-pulse">
-                        {[1, 2, 3].map(i => <div key={i} className="h-12 bg-muted rounded-xl" />)}
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-xs text-muted-foreground uppercase tracking-wider">Nome completo</label>
-                          {editing ? (
-                            <input
-                              className="w-full mt-1 bg-muted border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                              value={editedProfile.full_name || ''}
-                              onChange={e => setEditedProfile(p => ({ ...p, full_name: e.target.value }))}
-                            />
-                          ) : (
-                            <p className="mt-1 text-foreground font-medium">{profile?.full_name || <span className="text-muted-foreground italic">Não informado</span>}</p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground uppercase tracking-wider">Localização</label>
-                          {editing ? (
-                            <input
-                              className="w-full mt-1 bg-muted border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                              value={editedProfile.location || ''}
-                              onChange={e => setEditedProfile(p => ({ ...p, location: e.target.value }))}
-                              placeholder="Ex: Tokyo, Japão"
-                            />
-                          ) : (
-                            <p className="mt-1 text-foreground">{profile?.location || <span className="text-muted-foreground italic">Não informado</span>}</p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</label>
-                          {editing ? (
-                            <input
-                              className="w-full mt-1 bg-muted border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                              value={editedProfile.phone || ''}
-                              onChange={e => setEditedProfile(p => ({ ...p, phone: e.target.value }))}
-                              placeholder="+55 11 99999-9999"
-                            />
-                          ) : (
-                            <p className="mt-1 text-foreground">{profile?.phone || <span className="text-muted-foreground italic">Não informado</span>}</p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground uppercase tracking-wider">Apresentação</label>
-                          {editing ? (
-                            <textarea
-                              rows={3}
-                              className="w-full mt-1 bg-muted border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                              value={editedProfile.bio || ''}
-                              onChange={e => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
-                              placeholder="Escreva uma breve apresentação sobre você..."
-                            />
-                          ) : (
-                            <p className="mt-1 text-foreground/80 text-sm leading-relaxed">{profile?.bio || <span className="text-muted-foreground italic">Não informado</span>}</p>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">E-mail da conta: <span className="text-foreground">{user.email}</span></p>
-                      </div>
-                    )}
-                  </div>
+                    return (
+                      <>
+                        {/* Alerta de campos faltando */}
+                        {!canApply && (
+                          <div className="flex items-start gap-3 p-5 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                            <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="font-semibold text-foreground mb-1">Perfil incompleto — não é possível candidatar ainda</p>
+                              <p className="text-sm text-muted-foreground mb-3">
+                                Complete os campos obrigatórios antes de enviar sua candidatura:
+                              </p>
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {missingFields.map(f => (
+                                  <span key={f} className="text-xs bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border border-yellow-500/30 rounded-full px-2 py-0.5">{f}</span>
+                                ))}
+                              </div>
+                              <Button variant="outline" size="sm" className="rounded-full border-yellow-500/40 text-yellow-500 hover:bg-yellow-500/10 gap-2" asChild>
+                                <Link to="/dashboard?tab=profile"><Edit2 className="h-3.5 w-3.5" />Completar meu perfil</Link>
+                              </Button>
+                            </div>
+                          </div>
+                        )}
 
-                  {/* Contact methods of company */}
-                  {(company?.email || company?.phone || company?.linkedin || company?.website) && (
-                    <div className="glass-panel rounded-2xl p-6 border-border">
-                      <h3 className="text-lg font-semibold text-foreground mb-3">Contatos da Empresa</h3>
-                      <p className="text-sm text-muted-foreground mb-4">Após enviar sua candidatura, você pode entrar em contato direto com a empresa:</p>
-                      <div className="flex flex-wrap gap-3">
-                        {company?.email && (
-                          <a href={`mailto:${company.email}?subject=Candidatura: ${job.title}&body=Olá, tenho interesse na vaga de ${job.title}.`}>
-                            <Button variant="outline" size="sm" className="rounded-full gap-2"><Mail className="h-4 w-4" />E-mail</Button>
-                          </a>
-                        )}
-                        {company?.phone && (
-                          <a href={`tel:${company.phone}`}>
-                            <Button variant="outline" size="sm" className="rounded-full gap-2"><Phone className="h-4 w-4" />Ligar</Button>
-                          </a>
-                        )}
-                        {company?.linkedin && (
-                          <a href={company.linkedin} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="rounded-full gap-2"><Linkedin className="h-4 w-4" />LinkedIn</Button>
-                          </a>
-                        )}
-                        {company?.instagram && (
-                          <a href={`https://instagram.com/${company.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="rounded-full gap-2"><Instagram className="h-4 w-4" />Instagram</Button>
-                          </a>
-                        )}
-                        {company?.website && (
-                          <a href={company.website} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="rounded-full gap-2"><Globe className="h-4 w-4" />Website</Button>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                        {/* Resumo do perfil */}
+                        <div className="glass-panel rounded-2xl p-6 border-border">
+                          <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-lg font-semibold text-foreground">Dados que serão enviados</h3>
+                            <Button variant="ghost" size="sm" className="gap-1.5 rounded-full text-muted-foreground" asChild>
+                              <Link to="/dashboard?tab=profile"><Edit2 className="h-3.5 w-3.5" />Editar perfil</Link>
+                            </Button>
+                          </div>
 
-                  {/* Submit button */}
-                  <Button
-                    variant="gradient"
-                    size="lg"
-                    className="w-full rounded-full h-14 text-lg font-semibold shadow-lg shadow-primary/25 gap-2"
-                    onClick={handleSubmitApplication}
-                    disabled={applying}
-                  >
-                    <Send className="h-5 w-5" />
-                    {applying ? 'Enviando...' : 'Enviar Candidatura'}
-                  </Button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <ProfileRow label="Nome" value={profile?.full_name} />
+                            <ProfileRow label="Data de Nascimento"
+                              value={profile?.birth_date
+                                ? new Date(profile.birth_date + "T00:00:00").toLocaleDateString("pt-BR")
+                                : null} />
+                            <ProfileRow label="E-mail" value={user?.email} />
+                            <ProfileRow label="Telefone" value={profile?.phone} />
+                            {profile?.whatsapp && <ProfileRow label="WhatsApp" value={profile.whatsapp} />}
+                            <ProfileRow label="Melhor horário p/ ligar"
+                              value={CALL_TIME_OPTIONS.find(o => o.value === profile?.best_call_time)?.label} />
+                            <ProfileRow label="Cidade" value={profile?.city} />
+                            <ProfileRow label="Província" value={profile?.province} />
+                            <ProfileRow label="Sexo"
+                              value={profile?.gender === "masculino" ? "Masculino" : profile?.gender === "feminino" ? "Feminino" : profile?.gender} />
+                            <ProfileRow label="Pode mudar?"
+                              value={RELOCATION_OPTIONS.find(o => o.value === profile?.can_relocate)?.label} />
+                            <ProfileRow label="Nível de Japonês"
+                              value={JLPT_LEVELS.find(l => l.value === profile?.jlpt_level)?.label ?? profile?.jlpt_level} />
+                            <ProfileRow label="Tipo de Visto"
+                              value={profile?.visa_type === "outros"
+                                ? `Outros: ${profile.visa_other || "—"}`
+                                : VISA_TYPES.find(v => v.value === profile?.visa_type)?.label ?? profile?.visa_type} />
+                            <ProfileRow label="Nacionalidade" value={profile?.nationality} />
+                          </div>
+
+                          {profile?.bio && (
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Apresentação Pessoal</p>
+                              <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">{profile.bio}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Contatos da empresa */}
+                        {(company?.email || company?.phone || company?.linkedin || company?.website) && (
+                          <div className="glass-panel rounded-2xl p-6 border-border">
+                            <h3 className="text-lg font-semibold text-foreground mb-3">Contatos da Empresa</h3>
+                            <p className="text-sm text-muted-foreground mb-4">Após enviar sua candidatura, entre em contato direto com a empresa:</p>
+                            <div className="flex flex-wrap gap-3">
+                              {company?.email && (
+                                <a href={`mailto:${company.email}?subject=Candidatura: ${job.title}&body=Olá, tenho interesse na vaga de ${job.title}.`}>
+                                  <Button variant="outline" size="sm" className="rounded-full gap-2"><Mail className="h-4 w-4" />E-mail</Button>
+                                </a>
+                              )}
+                              {company?.phone && (
+                                <a href={`tel:${company.phone}`}>
+                                  <Button variant="outline" size="sm" className="rounded-full gap-2"><Phone className="h-4 w-4" />Ligar</Button>
+                                </a>
+                              )}
+                              {company?.linkedin && (
+                                <a href={company.linkedin} target="_blank" rel="noopener noreferrer">
+                                  <Button variant="outline" size="sm" className="rounded-full gap-2"><Linkedin className="h-4 w-4" />LinkedIn</Button>
+                                </a>
+                              )}
+                              {company?.instagram && (
+                                <a href={`https://instagram.com/${company.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer">
+                                  <Button variant="outline" size="sm" className="rounded-full gap-2"><Instagram className="h-4 w-4" />Instagram</Button>
+                                </a>
+                              )}
+                              {company?.website && (
+                                <a href={company.website} target="_blank" rel="noopener noreferrer">
+                                  <Button variant="outline" size="sm" className="rounded-full gap-2"><Globe className="h-4 w-4" />Website</Button>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Botão candidatar */}
+                        {canApply ? (
+                          <Button
+                            variant="gradient"
+                            size="lg"
+                            className="w-full rounded-full h-14 text-lg font-semibold shadow-lg shadow-primary/25 gap-2"
+                            onClick={handleSubmitApplication}
+                            disabled={applying}
+                          >
+                            <Send className="h-5 w-5" />
+                            {applying ? 'Enviando...' : 'Enviar Candidatura'}
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="lg" className="w-full rounded-full h-14 text-lg font-semibold gap-2" asChild>
+                            <Link to="/dashboard?tab=profile">
+                              <Edit2 className="h-5 w-5" />
+                              Completar perfil para candidatar
+                            </Link>
+                          </Button>
+                        )}
+                      </>
+                    )
+                  })()}
                 </>
               )}
             </div>
