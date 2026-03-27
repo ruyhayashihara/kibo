@@ -34,6 +34,7 @@ export function Home() {
   const [locationQuery, setLocationQuery] = useState("")
   const [featuredJobs, setFeaturedJobs] = useState<JobWithCompany[]>([])
   const [companies, setCompanies] = useState<{ id: string; name: string; logo_url: string | null }[]>([])
+  const [popularTags, setPopularTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
   const handleSearch = () => {
@@ -65,6 +66,40 @@ export function Home() {
 
         if (companiesError) throw companiesError
         setCompanies(companiesData || [])
+
+        // Buscar termos mais populares das vagas
+        const { data: allJobs } = await supabase
+          .from('jobs')
+          .select('requirements, work_mode, jlpt_level')
+
+        if (allJobs && allJobs.length > 0) {
+          const freq: Record<string, number> = {}
+
+          allJobs.forEach(job => {
+            // Contar requisitos individuais
+            ;(job.requirements || []).forEach((req: string) => {
+              const key = req.trim()
+              if (key.length > 2 && key.length < 40) {
+                freq[key] = (freq[key] || 0) + 1
+              }
+            })
+            // Contar modo de trabalho
+            if (job.work_mode) {
+              freq[job.work_mode] = (freq[job.work_mode] || 0) + 1
+            }
+            // Contar nível JLPT
+            if (job.jlpt_level) {
+              freq[job.jlpt_level] = (freq[job.jlpt_level] || 0) + 1
+            }
+          })
+
+          const sorted = Object.entries(freq)
+            .sort((a, b) => b[1] - a[1])
+            .map(([term]) => term)
+            .slice(0, 8)
+
+          setPopularTags(sorted)
+        }
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       } finally {
@@ -200,16 +235,22 @@ export function Home() {
           {/* Quick Filters */}
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <span className="text-sm text-muted-foreground flex items-center mr-2">Buscas populares:</span>
-            {["TI & Software", "Engenharia", "Marketing", "Nível N3+", "Inglês Nativo", "Remoto"].map((tag) => (
-              <Badge
-                key={tag}
-                variant="outline"
-                onClick={() => navigate(`/vagas?q=${encodeURIComponent(tag)}`)}
-                className="hover:bg-primary hover:text-primary-foreground cursor-pointer transition-colors py-1.5 px-4 rounded-none"
-              >
-                {tag}
-              </Badge>
-            ))}
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-7 w-24 rounded bg-muted animate-pulse" />
+              ))
+            ) : popularTags.length > 0 ? (
+              popularTags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  onClick={() => navigate(`/vagas?q=${encodeURIComponent(tag)}`)}
+                  className="hover:bg-primary hover:text-primary-foreground cursor-pointer transition-colors py-1.5 px-4 rounded-none"
+                >
+                  {tag}
+                </Badge>
+              ))
+            ) : null}
           </div>
         </div>
       </section>
