@@ -257,7 +257,19 @@ export function JobDetail() {
                         variant="outline"
                         size="icon"
                         className="rounded-full border-border bg-muted"
-                        onClick={() => setShowShareMenu(v => !v)}
+                        onClick={async () => {
+                          if (navigator.share) {
+                            try {
+                              await navigator.share({
+                                title: job?.title ?? "Vaga no KiboJobs",
+                                text: `Veja essa vaga no KiboJobs: ${job?.title}`,
+                                url: window.location.href,
+                              })
+                            } catch (_) {}
+                          } else {
+                            setShowShareMenu(v => !v)
+                          }
+                        }}
                         title="Compartilhar vaga"
                       >
                         <Share2 className="h-4 w-4" />
