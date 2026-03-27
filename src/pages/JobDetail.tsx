@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
 import {
   MapPin, Briefcase, Building2, Clock, Globe, GraduationCap,
-  ChevronLeft, Share2, BookmarkPlus, ExternalLink, Mail, Phone,
+  ChevronLeft, Share2, BookmarkPlus, Bookmark, ExternalLink, Mail, Phone,
   Linkedin, Instagram, User, Send, CheckCircle, AlertCircle, Edit2,
   Copy, Check as CheckIcon, MessageCircle
 } from "lucide-react"
@@ -84,6 +84,24 @@ export function JobDetail() {
   const [showShareMenu, setShowShareMenu] = useState(false)
   const [copied, setCopied] = useState(false)
   const shareMenuRef = useRef<HTMLDivElement>(null)
+
+  const STORAGE_KEY = "kibojobs_saved"
+  const [savedJobs, setSavedJobs] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") } catch { return [] }
+  })
+  const isSaved = id ? savedJobs.includes(id) : false
+  const [saveFlash, setSaveFlash] = useState(false)
+
+  function toggleSaved() {
+    if (!id) return
+    setSavedJobs(prev => {
+      const next = prev.includes(id) ? prev.filter(j => j !== id) : [...prev, id]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+    setSaveFlash(true)
+    setTimeout(() => setSaveFlash(false), 1500)
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -386,7 +404,29 @@ export function JobDetail() {
                       )}
                     </div>
 
-                    <Button variant="outline" size="icon" className="rounded-full border-border bg-muted"><BookmarkPlus className="h-4 w-4" /></Button>
+                    <div className="relative">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={toggleSaved}
+                        title={isSaved ? "Remover dos favoritos" : "Salvar vaga"}
+                        className={`rounded-full border-border transition-colors ${
+                          isSaved
+                            ? "bg-primary/20 border-primary/40 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {isSaved
+                          ? <Bookmark className="h-4 w-4 fill-primary text-primary" />
+                          : <BookmarkPlus className="h-4 w-4" />
+                        }
+                      </Button>
+                      {saveFlash && (
+                        <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs bg-popover border border-border rounded-lg px-2 py-1 shadow text-foreground z-50">
+                          {isSaved ? "Salvo!" : "Removido"}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-y-3 gap-x-6 mt-6 p-4 rounded-2xl bg-muted border border-border">
