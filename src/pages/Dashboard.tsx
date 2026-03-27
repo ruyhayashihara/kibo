@@ -4,7 +4,7 @@ import {
   LayoutDashboard, User, Settings, LogOut, Briefcase,
   CheckCircle2, Circle, Send, Clock, Building2, MapPin,
   Edit2, Save, X, Camera, Phone, FileText, AlertCircle,
-  Calendar, Globe2, ShieldCheck, Languages, Car
+  Calendar, Globe2, ShieldCheck, Languages, Car, Bookmark, ExternalLink
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Badge } from "@/src/components/ui/badge"
@@ -14,6 +14,16 @@ import {
   CandidateProfileFull, calcProfileCompletion, getMissingRequiredFields,
   JAPAN_PROVINCES, JLPT_LEVELS, VISA_TYPES, RELOCATION_OPTIONS, CALL_TIME_OPTIONS
 } from "@/src/lib/profileData"
+
+interface SavedJobData {
+  id: string
+  title: string
+  location: string | null
+  job_type: string | null
+  salary_min: number | null
+  salary_max: number | null
+  companies: { name: string; logo_url: string | null } | null
+}
 
 interface ApplicationWithJob {
   id: string
@@ -125,6 +135,13 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview")
   const [loading, setLoading] = useState(true)
 
+  const STORAGE_KEY = "kibojobs_saved"
+  const [savedJobIds, setSavedJobIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") } catch { return [] }
+  })
+  const [savedJobsData, setSavedJobsData] = useState<SavedJobData[]>([])
+  const [savedLoading, setSavedLoading] = useState(false)
+
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Partial<CandidateProfileFull>>({})
   const [saving, setSaving] = useState(false)
@@ -158,6 +175,25 @@ export function Dashboard() {
     }
     fetchAll()
   }, [user])
+
+  useEffect(() => {
+    if (savedJobIds.length === 0) { setSavedJobsData([]); return }
+    setSavedLoading(true)
+    supabase
+      .from("jobs")
+      .select("id, title, location, job_type, salary_min, salary_max, companies(name, logo_url)")
+      .in("id", savedJobIds)
+      .then(({ data }) => { setSavedJobsData((data as any) || []) })
+      .finally(() => setSavedLoading(false))
+  }, [savedJobIds])
+
+  function removeSaved(jobId: string) {
+    setSavedJobIds(prev => {
+      const next = prev.filter(id => id !== jobId)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }
 
   const startEditing = () => {
     setDraft({ ...(profile || {}) })
@@ -208,6 +244,7 @@ export function Dashboard() {
   const tabs = [
     { id: "overview",     label: "Visão geral",   icon: LayoutDashboard },
     { id: "applications", label: "Candidaturas",  icon: Send, count: applications.length },
+    { id: "saved",        label: "Favoritos",     icon: Bookmark, count: savedJobIds.length },
     { id: "profile",      label: "Meu perfil",    icon: User },
     { id: "settings",     label: "Configurações", icon: Settings },
   ]
@@ -280,9 +317,13 @@ export function Dashboard() {
                 <p className="text-muted-foreground">Aqui está o resumo das suas atividades.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <StatCard icon={Send} color="primary" label="Candidaturas" value={loading ? "—" : applications.length} />
                 <StatCard icon={Briefcase} color="emerald" label="Vagas disponíveis" value={loading ? "—" : totalJobs} />
+                <StatCard
+                  icon={Bookmark} color="primary" label="Favoritos" value={savedJobIds.length}
+                  onClick={() => setActiveTab("saved")}
+                />
                 <StatCard icon={User} color="primary" label="Perfil completo" value={loading ? "—" : `${completion}%`} />
               </div>
 
@@ -364,6 +405,75 @@ export function Dashboard() {
                 <p className="text-muted-foreground">{applications.length} candidatura(s) no total.</p>
               </div>
               <ApplicationList applications={applications} loading={loading} />
+            </div>
+          )}
+
+          {/* ══ FAVORITOS ══ */}
+          {activeTab === "saved" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">Vagas Favoritas</h1>
+                <p className="text-muted-foreground">{savedJobIds.length} vaga(s) salva(s).</p>
+              </div>
+
+              {savedLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}
+                </div>
+              ) : savedJobsData.length === 0 ? (
+                <div className="glass-panel rounded-xl p-10 border-border text-center">
+                  <div className="mx-auto h-14 w-14 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <Bookmark className="h-7 w-7 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Nenhuma vaga salva</h3>
+                  <p className="text-muted-foreground mb-5 text-sm">Clique no ícone de favorito em qualquer vaga para salvá-la aqui.</p>
+                  <Button variant="outline" className="rounded-full border-border" asChild>
+                    <Link to="/vagas">Explorar Vagas</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {savedJobsData.map(job => {
+                    const initials = job.companies?.name
+                      ? job.companies.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+                      : "?"
+                    const salary = job.salary_min && job.salary_max
+                      ? `¥${job.salary_min.toLocaleString("pt-BR")} ~ ¥${job.salary_max.toLocaleString("pt-BR")}/mês`
+                      : null
+                    return (
+                      <div key={job.id} className="glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                        <div className="h-12 w-12 rounded-lg bg-primary/10 border border-border flex items-center justify-center text-sm font-bold text-primary shrink-0 overflow-hidden">
+                          {job.companies?.logo_url
+                            ? <img src={job.companies.logo_url} alt="" className="h-full w-full object-contain" />
+                            : initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block">
+                            {job.title}
+                          </Link>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            {job.companies?.name && <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{job.companies.name}</span>}
+                            {job.location && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{job.location}</span>}
+                            {salary && <span className="text-primary font-medium">{salary}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button variant="outline" size="sm" className="rounded-full gap-1.5 text-xs" asChild>
+                            <Link to={`/vagas/${job.id}`}><ExternalLink className="h-3.5 w-3.5" />Ver vaga</Link>
+                          </Button>
+                          <button
+                            onClick={() => removeSaved(job.id)}
+                            title="Remover dos favoritos"
+                            className="h-8 w-8 rounded-full flex items-center justify-center border border-border bg-muted hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-muted-foreground transition-colors"
+                          >
+                            <Bookmark className="h-4 w-4 fill-current" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -643,15 +753,18 @@ function ProfileSection({ icon, title, children }: { icon: React.ReactNode; titl
   )
 }
 
-function StatCard({ icon: Icon, color, label, value }: { icon: any; color: string; label: string; value: any }) {
+function StatCard({ icon: Icon, color, label, value, onClick }: { icon: any; color: string; label: string; value: any; onClick?: () => void }) {
   return (
-    <div className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
-      <div className={`h-12 w-12 rounded-full bg-${color}-500/20 flex items-center justify-center text-${color}-500`}>
-        <Icon className="h-6 w-6" />
+    <div
+      className={`glass-panel rounded-2xl p-5 border-border flex items-center space-x-3 ${onClick ? "cursor-pointer hover:border-primary/40 transition-colors" : ""}`}
+      onClick={onClick}
+    >
+      <div className={`h-10 w-10 rounded-full bg-${color}-500/20 flex items-center justify-center text-${color}-500 shrink-0`}>
+        <Icon className="h-5 w-5" />
       </div>
       <div>
-        <p className="text-sm text-muted-foreground font-medium">{label}</p>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
+        <p className="text-xs text-muted-foreground font-medium">{label}</p>
+        <p className="text-xl font-bold text-foreground">{value}</p>
       </div>
     </div>
   )
