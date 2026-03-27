@@ -270,12 +270,12 @@ export function JobDetail() {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-border overflow-x-auto">
+          <div className="grid grid-cols-3 border-b border-border">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id)}
-                className={`px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
+                className={`px-4 py-4 text-sm font-medium text-center transition-colors border-b-2 ${
                   activeTab === tab.id
                     ? "text-primary border-primary"
                     : "text-muted-foreground border-transparent hover:text-foreground"
