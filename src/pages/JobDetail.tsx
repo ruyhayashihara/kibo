@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
 import {
   MapPin, Briefcase, Building2, Clock, Globe, GraduationCap,
   ChevronLeft, Share2, BookmarkPlus, ExternalLink, Mail, Phone,
-  Linkedin, Instagram, User, Send, CheckCircle, AlertCircle, Edit2
+  Linkedin, Instagram, User, Send, CheckCircle, AlertCircle, Edit2,
+  Copy, Check as CheckIcon, MessageCircle
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent } from "@/src/components/ui/card"
@@ -79,6 +80,20 @@ export function JobDetail() {
   const [applied, setApplied] = useState(false)
   const [applying, setApplying] = useState(false)
   const [alreadyApplied, setAlreadyApplied] = useState(false)
+
+  const [showShareMenu, setShowShareMenu] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const shareMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
+        setShowShareMenu(false)
+      }
+    }
+    if (showShareMenu) document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [showShareMenu])
 
   useEffect(() => {
     async function fetchJob() {
@@ -236,7 +251,129 @@ export function JobDetail() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="icon" className="rounded-full border-border bg-muted"><Share2 className="h-4 w-4" /></Button>
+                    {/* ── Share button ── */}
+                    <div className="relative" ref={shareMenuRef}>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full border-border bg-muted"
+                        onClick={() => setShowShareMenu(v => !v)}
+                        title="Compartilhar vaga"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+
+                      {showShareMenu && (
+                        <div className="absolute right-0 top-12 z-50 w-64 glass-panel rounded-2xl border border-border shadow-xl p-3 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider px-2 pb-1">Compartilhar vaga</p>
+
+                          {/* WhatsApp */}
+                          <a
+                            href={`https://wa.me/?text=${encodeURIComponent(`Olha essa vaga no KiboJobs: ${job?.title}\n${window.location.href}`)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors"
+                            onClick={() => setShowShareMenu(false)}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-[#25D366]/20 flex items-center justify-center shrink-0">
+                              <svg className="h-4 w-4 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.557 4.125 1.526 5.855L.057 23.526a.75.75 0 00.918.918l5.682-1.47A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.712 9.712 0 01-4.95-1.35l-.356-.212-3.69.954.974-3.583-.231-.368A9.712 9.712 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/></svg>
+                            </div>
+                            <span className="text-sm font-medium text-foreground">WhatsApp</span>
+                          </a>
+
+                          {/* Line */}
+                          <a
+                            href={`https://line.me/R/msg/text/?${encodeURIComponent(`${job?.title} — KiboJobs\n${window.location.href}`)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors"
+                            onClick={() => setShowShareMenu(false)}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-[#00B900]/20 flex items-center justify-center shrink-0">
+                              <svg className="h-4 w-4 text-[#00B900]" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.63 0 .344-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.628-.63.628H16.98c-.348 0-.629-.283-.629-.628V8.108c0-.345.281-.63.63-.63h2.385c.348 0 .629.285.629.63 0 .349-.281.63-.629.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.628-.631.628-.346 0-.626-.283-.626-.628V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.628-.631.628-.345 0-.627-.283-.627-.628V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.283-.63-.628V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.628-.629.628M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                            </div>
+                            <span className="text-sm font-medium text-foreground">Line</span>
+                          </a>
+
+                          {/* Facebook */}
+                          <a
+                            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors"
+                            onClick={() => setShowShareMenu(false)}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-[#1877F2]/20 flex items-center justify-center shrink-0">
+                              <svg className="h-4 w-4 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                            </div>
+                            <span className="text-sm font-medium text-foreground">Facebook</span>
+                          </a>
+
+                          {/* Instagram — copy link */}
+                          <button
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-left"
+                            onClick={() => {
+                              navigator.clipboard.writeText(window.location.href)
+                              setCopied(true)
+                              setTimeout(() => setCopied(false), 2000)
+                            }}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#f09433]/20 via-[#e6683c]/20 to-[#bc1888]/20 flex items-center justify-center shrink-0">
+                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="url(#igGrad)"><defs><linearGradient id="igGrad" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f09433"/><stop offset="25%" stopColor="#e6683c"/><stop offset="50%" stopColor="#dc2743"/><stop offset="75%" stopColor="#cc2366"/><stop offset="100%" stopColor="#bc1888"/></linearGradient></defs><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-foreground">Instagram</span>
+                              <p className="text-xs text-muted-foreground">Copiar link para colar</p>
+                            </div>
+                          </button>
+
+                          {/* TikTok — copy link */}
+                          <button
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-left"
+                            onClick={() => {
+                              navigator.clipboard.writeText(window.location.href)
+                              setCopied(true)
+                              setTimeout(() => setCopied(false), 2000)
+                            }}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-foreground/10 flex items-center justify-center shrink-0">
+                              <svg className="h-4 w-4 text-foreground" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.84 4.84 0 01-1.01-.06z"/></svg>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-foreground">TikTok</span>
+                              <p className="text-xs text-muted-foreground">Copiar link para colar</p>
+                            </div>
+                          </button>
+
+                          {/* SMS */}
+                          <a
+                            href={`sms:?body=${encodeURIComponent(`Veja essa vaga no KiboJobs: ${job?.title}\n${window.location.href}`)}`}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors"
+                            onClick={() => setShowShareMenu(false)}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                              <MessageCircle className="h-4 w-4 text-primary" />
+                            </div>
+                            <span className="text-sm font-medium text-foreground">SMS</span>
+                          </a>
+
+                          {/* Copiar link */}
+                          <button
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-left border-t border-border mt-1 pt-2"
+                            onClick={() => {
+                              navigator.clipboard.writeText(window.location.href)
+                              setCopied(true)
+                              setTimeout(() => { setCopied(false); setShowShareMenu(false) }, 2000)
+                            }}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-muted border border-border flex items-center justify-center shrink-0">
+                              {copied ? <CheckIcon className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                            </div>
+                            <span className="text-sm font-medium text-foreground">
+                              {copied ? "Link copiado!" : "Copiar link"}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     <Button variant="outline" size="icon" className="rounded-full border-border bg-muted"><BookmarkPlus className="h-4 w-4" /></Button>
                   </div>
                 </div>
