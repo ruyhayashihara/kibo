@@ -264,7 +264,7 @@ export function JobDetail() {
                       </Button>
 
                       {showShareMenu && (
-                        <div className="absolute left-0 top-12 z-50 w-64 glass-panel rounded-2xl border border-border shadow-xl p-3 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="absolute left-0 md:left-auto md:right-0 top-12 z-50 w-64 glass-panel rounded-2xl border border-border shadow-xl p-3 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
                           <p className="text-xs text-muted-foreground uppercase tracking-wider px-2 pb-1">Compartilhar vaga</p>
 
                           {/* WhatsApp */}
