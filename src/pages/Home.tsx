@@ -35,6 +35,7 @@ export function Home() {
   const [featuredJobs, setFeaturedJobs] = useState<JobWithCompany[]>([])
   const [companies, setCompanies] = useState<{ id: string; name: string; logo_url: string | null }[]>([])
   const [popularTags, setPopularTags] = useState<string[]>([])
+  const [totalJobs, setTotalJobs] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   const handleSearch = () => {
@@ -66,6 +67,12 @@ export function Home() {
 
         if (companiesError) throw companiesError
         setCompanies(companiesData || [])
+
+        // Total real de vagas em aberto
+        const { count: jobsCount } = await supabase
+          .from('jobs')
+          .select('*', { count: 'exact', head: true })
+        setTotalJobs(jobsCount ?? 0)
 
         // Buscar termos mais populares das vagas
         const { data: allJobs } = await supabase
@@ -131,7 +138,12 @@ export function Home() {
         <div className="container relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
           <Badge variant="outline" className="mb-6 py-1.5 px-4 text-sm border-primary/30 text-primary">
             <span className="mr-2 inline-block h-2 w-2 rounded-none bg-primary animate-pulse" />
-            Mais de 2.500 vagas abertas hoje
+            {totalJobs === null
+              ? "Carregando vagas..."
+              : totalJobs === 0
+              ? "Vagas em aberto no site"
+              : `${totalJobs.toLocaleString('pt-BR')} ${totalJobs === 1 ? "vaga em aberto" : "vagas em aberto"}`
+            }
           </Badge>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 text-foreground">
