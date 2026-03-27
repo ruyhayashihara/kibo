@@ -16,6 +16,9 @@ export function Register() {
   const [loading, setLoading] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   
+  // Candidate form fields
+  const [fullName, setFullName] = useState("")
+
   // Company form fields
   const [companyName, setCompanyName] = useState("")
   const [companyIndustry, setCompanyIndustry] = useState("")
@@ -84,25 +87,43 @@ export function Register() {
         })
         if (error) throw error
         
-        // If user is a company, create company record
-        if (userType === "company" && data.user) {
-          const { error: companyError } = await supabase
-            .from('companies')
-            .insert({
-              name: companyName || 'Nova Empresa',
-              industry: companyIndustry || null,
-              description: null,
-              website: null,
-              logo_url: null,
-              open_jobs: 0,
-              user_id: data.user.id
-            })
-          
-          if (companyError) {
-            console.error('Erro ao criar empresa:', companyError)
+        if (data.user) {
+          if (userType === "candidate") {
+            // Criar perfil do candidato
+            const completion = fullName.trim() ? 25 : 0
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: data.user.id,
+                full_name: fullName.trim() || null,
+                avatar_url: null,
+                bio: null,
+                location: null,
+                phone: null,
+                completion_percentage: completion
+              })
+            if (profileError) {
+              console.error('Erro ao criar perfil:', profileError)
+            }
+          } else if (userType === "company") {
+            // Criar registro da empresa
+            const { error: companyError } = await supabase
+              .from('companies')
+              .insert({
+                name: companyName || 'Nova Empresa',
+                industry: companyIndustry || null,
+                description: null,
+                website: null,
+                logo_url: null,
+                open_jobs: 0,
+                user_id: data.user.id
+              })
+            if (companyError) {
+              console.error('Erro ao criar empresa:', companyError)
+            }
           }
         }
-        
+
         alert("Cadastro realizado! Verifique seu email.")
       }
     } catch (err: any) {
@@ -217,7 +238,12 @@ export function Register() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Nome completo</label>
-                          <Input placeholder="Ex: João da Silva" />
+                          <Input
+                            placeholder="Ex: João da Silva"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground/80">Email</label>

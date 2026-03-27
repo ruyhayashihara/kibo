@@ -1,180 +1,184 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { 
-  LayoutDashboard, 
-  Bookmark, 
-  User, 
-  Settings, 
-  LogOut, 
-  Briefcase, 
-  CheckCircle2, 
+import {
+  LayoutDashboard,
+  Bookmark,
+  User,
+  Settings,
+  LogOut,
+  Briefcase,
+  CheckCircle2,
   Circle,
-  Trash2,
-  MapPin,
+  Send,
+  Clock,
   Building2,
-  Clock
+  MapPin
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Badge } from "@/src/components/ui/badge"
 import { supabase } from "@/src/lib/supabase"
 import { useAuth } from "../context/AuthContext"
 
-// Mock data for saved jobs (local storage for demo)
-const INITIAL_SAVED_JOBS = [
-  {
-    id: "1",
-    title: "Desenvolvedor Frontend Sênior",
-    company: "TechCorp Japan",
-    location: "Tóquio, Japão",
-    type: "CLT (Seishain)",
-    salary: "¥8M - ¥12M",
-    logo: "T"
-  },
-  {
-    id: "2",
-    title: "Engenheiro de Software Backend",
-    company: "Global Systems",
-    location: "Osaka, Japão",
-    type: "Autônomo (Kojin Jigyou Nushi)",
-    salary: "¥7M - ¥10M",
-    logo: "G"
-  },
-  {
-    id: "3",
-    title: "Especialista em Marketing Digital",
-    company: "Creative Agency",
-    location: "Remoto",
-    type: "CLT (Seishain)",
-    salary: "¥5M - ¥8M",
-    logo: "C"
-  }
-]
+interface UserProfile {
+  full_name: string | null
+  avatar_url: string | null
+  bio: string | null
+  location: string | null
+  phone: string | null
+  completion_percentage: number
+}
 
-interface JobWithCompany {
+interface ApplicationWithJob {
   id: string
-  title: string
-  location: string
-  work_mode: string
-  job_type: string
-  salary_min: number | null
-  salary_max: number | null
-  is_sponsored: boolean
-  companies: { name: string; logo_url: string | null } | null
+  status: string
+  applied_at: string
+  jobs: {
+    id: string
+    title: string
+    location: string
+    job_type: string
+    companies: { name: string; logo_url: string | null } | null
+  } | null
+}
+
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return "Bom dia"
+  if (h < 18) return "Boa tarde"
+  return "Boa noite"
+}
+
+function getInitials(name: string | null) {
+  if (!name) return "?"
+  return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 }
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const { signOut } = useAuth()
-  const [savedJobs, setSavedJobs] = useState(INITIAL_SAVED_JOBS)
-  const [activeTab, setActiveTab] = useState("overview")
+  const { user, signOut } = useAuth()
+
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [applications, setApplications] = useState<ApplicationWithJob[]>([])
   const [totalJobs, setTotalJobs] = useState(0)
+  const [activeTab, setActiveTab] = useState("overview")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchStats() {
+    if (!user) return
+
+    async function fetchAll() {
       try {
-        const { count, error } = await supabase
-          .from('jobs')
-          .select('*', { count: 'exact', head: true })
-        
-        if (!error && count !== null) {
-          setTotalJobs(count)
-        }
-      } catch (error) {
-        console.error('Erro ao carregar estatísticas:', error)
+        // Perfil real do usuário
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url, bio, location, phone, completion_percentage")
+          .eq("id", user!.id)
+          .maybeSingle()
+
+        setProfile(profileData || null)
+
+        // Candidaturas reais do usuário
+        const { data: appsData } = await supabase
+          .from("applications")
+          .select("id, status, applied_at, jobs(id, title, location, job_type, companies(name, logo_url))")
+          .eq("user_id", user!.id)
+          .order("applied_at", { ascending: false })
+
+        setApplications((appsData as any) || [])
+
+        // Total de vagas disponíveis
+        const { count } = await supabase
+          .from("jobs")
+          .select("*", { count: "exact", head: true })
+
+        setTotalJobs(count || 0)
+      } catch (err) {
+        console.error("Erro ao carregar dashboard:", err)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchStats()
-  }, [])
+    fetchAll()
+  }, [user])
 
-  const removeJob = (id: string) => {
-    setSavedJobs(savedJobs.filter(job => job.id !== id))
+  const firstName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "você"
+  const completion = profile?.completion_percentage ?? 0
+
+  const completionItems = [
+    { label: "Informações básicas", done: !!profile?.full_name },
+    { label: "Localização", done: !!profile?.location },
+    { label: "Telefone de contato", done: !!profile?.phone },
+    { label: "Apresentação pessoal", done: !!profile?.bio },
+  ]
+
+  const statusLabel: Record<string, { label: string; color: string }> = {
+    pending:   { label: "Enviada",        color: "bg-yellow-500/20 text-yellow-500" },
+    viewed:    { label: "Visualizada",    color: "bg-blue-500/20 text-blue-500" },
+    interview: { label: "Entrevista",     color: "bg-purple-500/20 text-purple-500" },
+    accepted:  { label: "Aceita",         color: "bg-green-500/20 text-green-500" },
+    rejected:  { label: "Não selecionado", color: "bg-red-500/20 text-red-500" },
   }
 
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-col md:flex-row gap-8">
-        
-        {/* Left Sidebar (240px) */}
+
+        {/* Sidebar */}
         <aside className="w-full md:w-[240px] shrink-0">
           <div className="glass-panel rounded-2xl p-6 border-border sticky top-24">
-            {/* User Profile Summary */}
+
+            {/* Avatar + Nome */}
             <div className="flex flex-col items-center text-center mb-8">
-              <div className="h-20 w-20 rounded-none bg-primary p-1 mb-4 shadow-sm">
-                <div className="h-full w-full rounded-none bg-muted flex items-center justify-center overflow-hidden">
-                  <img 
-                    src="https://picsum.photos/seed/avatar/200/200" 
-                    alt="Avatar" 
-                    className="h-full w-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
+              <div className="h-20 w-20 rounded-full border-2 border-primary/40 mb-4 overflow-hidden flex items-center justify-center bg-muted shadow-sm">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <span className="text-2xl font-bold text-primary">{getInitials(profile?.full_name ?? null)}</span>
+                )}
               </div>
-              <h3 className="font-semibold text-lg text-foreground">João da Silva</h3>
-              <p className="text-sm text-muted-foreground">Desenvolvedor Frontend</p>
+              <h3 className="font-semibold text-lg text-foreground leading-tight">
+                {profile?.full_name || <span className="text-muted-foreground italic text-sm">Nome não cadastrado</span>}
+              </h3>
+              {profile?.bio && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{profile.bio}</p>
+              )}
+              {profile?.location && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-center">
+                  <MapPin className="h-3 w-3" /> {profile.location}
+                </p>
+              )}
             </div>
 
-            {/* Navigation */}
+            {/* Nav */}
             <nav className="space-y-2">
-              <button 
-                onClick={() => setActiveTab("overview")}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
-                  activeTab === "overview" 
-                    ? "bg-primary/20 text-primary border border-primary/30" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
-                }`}
-              >
-                <LayoutDashboard className="h-5 w-5" />
-                <span className="font-medium">Visão geral</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab("saved")}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
-                  activeTab === "saved" 
-                    ? "bg-primary/20 text-primary border border-primary/30" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
-                }`}
-              >
-                <Bookmark className="h-5 w-5" />
-                <span className="font-medium">Vagas salvas</span>
-                <Badge variant="glass" className="ml-auto bg-muted text-foreground text-xs">{savedJobs.length}</Badge>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab("profile")}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
-                  activeTab === "profile" 
-                    ? "bg-primary/20 text-primary border border-primary/30" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
-                }`}
-              >
-                <User className="h-5 w-5" />
-                <span className="font-medium">Meu perfil</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab("settings")}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
-                  activeTab === "settings" 
-                    ? "bg-primary/20 text-primary border border-primary/30" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
-                }`}
-              >
-                <Settings className="h-5 w-5" />
-                <span className="font-medium">Configurações</span>
-              </button>
+              {[
+                { id: "overview", label: "Visão geral", icon: LayoutDashboard },
+                { id: "applications", label: "Candidaturas", icon: Send, count: applications.length },
+                { id: "profile", label: "Meu perfil", icon: User },
+                { id: "settings", label: "Configurações", icon: Settings },
+              ].map(({ id, label, icon: Icon, count }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
+                    activeTab === id
+                      ? "bg-primary/20 text-primary border border-primary/30"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="font-medium">{label}</span>
+                  {count !== undefined && count > 0 && (
+                    <Badge variant="glass" className="ml-auto bg-muted text-foreground text-xs">{count}</Badge>
+                  )}
+                </button>
+              ))}
             </nav>
 
             <div className="mt-8 pt-6 border-t border-border">
-              <button 
-                onClick={async () => {
-                  await signOut();
-                  navigate('/login');
-                }}
+              <button
+                onClick={async () => { await signOut(); navigate("/login") }}
                 className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
               >
                 <LogOut className="h-5 w-5" />
@@ -184,151 +188,151 @@ export function Dashboard() {
           </div>
         </aside>
 
-        {/* Main Content */}
+        {/* Main */}
         <main className="flex-1 space-y-8">
-          
+
           {/* Greeting */}
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Bom dia, João!</h1>
-            <p className="text-muted-foreground">Aqui está o resumo das suas atividades hoje.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">
+              {getGreeting()}, {firstName}!
+            </h1>
+            <p className="text-muted-foreground">Aqui está o resumo das suas atividades.</p>
           </div>
 
-          {/* Quick Stats Row */}
+          {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
               <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                <Bookmark className="h-6 w-6" />
+                <Send className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground font-medium">Vagas salvas</p>
-                <p className="text-2xl font-bold text-foreground">{savedJobs.length}</p>
+                <p className="text-sm text-muted-foreground font-medium">Candidaturas</p>
+                <p className="text-2xl font-bold text-foreground">{loading ? "—" : applications.length}</p>
               </div>
             </div>
-            
+
             <div className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
               <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
                 <Briefcase className="h-6 w-6" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground font-medium">Vagas disponíveis</p>
-                <p className="text-2xl font-bold text-foreground">{loading ? '-' : totalJobs}</p>
+                <p className="text-2xl font-bold text-foreground">{loading ? "—" : totalJobs}</p>
               </div>
             </div>
-            
+
             <div className="glass-panel rounded-2xl p-6 border-border flex items-center space-x-4">
               <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
                 <User className="h-6 w-6" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground font-medium">Perfil completo</p>
-                <p className="text-2xl font-bold text-foreground">60%</p>
+                <p className="text-2xl font-bold text-foreground">{loading ? "—" : `${completion}%`}</p>
               </div>
             </div>
           </div>
 
-          {/* Profile Completion Card */}
+          {/* Profile Completion */}
           <div className="glass-panel rounded-2xl p-6 md:p-8 border-border relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-            
             <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-center">
               <div className="flex-1 space-y-4">
                 <div>
                   <h2 className="text-xl font-bold text-foreground mb-1">Complete seu perfil</h2>
-                  <p className="text-sm text-muted-foreground">Perfis completos recebem até 4x mais visualizações de recrutadores.</p>
+                  <p className="text-sm text-muted-foreground">Perfis completos recebem mais atenção dos recrutadores.</p>
                 </div>
-                
-                {/* Progress Bar */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-primary font-medium">60% Concluído</span>
-                    <span className="text-muted-foreground">Faltam 2 etapas</span>
+                    <span className="text-primary font-medium">{completion}% concluído</span>
+                    <span className="text-muted-foreground">{completionItems.filter(i => !i.done).length} etapa(s) restante(s)</span>
                   </div>
-                  <div className="h-2 w-full bg-muted rounded-none overflow-hidden">
-                    <div className="h-full bg-primary rounded-none" style={{ width: "60%" }} />
+                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${completion}%` }} />
                   </div>
                 </div>
               </div>
-              
-              {/* Checklist */}
               <div className="w-full md:w-64 space-y-3 bg-muted p-4 rounded-xl border border-border">
-                <div className="flex items-center space-x-3 text-sm">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                  <span className="text-muted-foreground line-through">Informações básicas</span>
-                </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                  <span className="text-muted-foreground line-through">Experiência profissional</span>
-                </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <span className="text-foreground font-medium">Adicionar currículo (PDF)</span>
-                </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <span className="text-foreground font-medium">Nível de idiomas</span>
-                </div>
+                {completionItems.map(({ label, done }) => (
+                  <div key={label} className="flex items-center space-x-3 text-sm">
+                    {done
+                      ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                      : <Circle className="h-5 w-5 text-muted-foreground shrink-0" />}
+                    <span className={done ? "text-muted-foreground line-through" : "text-foreground font-medium"}>{label}</span>
+                  </div>
+                ))}
               </div>
             </div>
+            {completion < 100 && (
+              <div className="mt-4 relative z-10">
+                <Button variant="outline" size="sm" className="rounded-full" onClick={() => setActiveTab("profile")}>
+                  Completar perfil
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* Saved Jobs Section */}
+          {/* Candidaturas recentes */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-foreground">Vagas Salvas Recentemente</h2>
-              <Button variant="link" className="text-primary p-0 h-auto">Ver todas</Button>
-            </div>
-            
-            <div className="space-y-4">
-              {savedJobs.length > 0 ? (
-                savedJobs.map((job) => (
-                  <div key={job.id} className="glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center transition-all hover:bg-muted">
-                    <div className="h-12 w-12 rounded-none bg-primary/10 border border-border flex items-center justify-center text-xl font-bold text-primary shrink-0">
-                      {job.logo}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <Link to={`/vagas/${job.id}`} className="text-lg font-semibold text-foreground hover:text-primary transition-colors truncate block">
-                        {job.title}
-                      </Link>
-                      <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
-                        <span className="flex items-center"><Building2 className="h-3.5 w-3.5 mr-1" /> {job.company}</span>
-                        <span className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-1" /> {job.location}</span>
-                        <span className="flex items-center"><Clock className="h-3.5 w-3.5 mr-1" /> {job.type}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end mt-2 sm:mt-0">
-                      <Badge variant="glass" className="bg-primary/10 text-primary border-primary/20">{job.salary}</Badge>
-                      <div className="flex items-center gap-2">
-                        <Button variant="gradient" size="sm" className="rounded-full px-4">
-                          Candidatar
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-9 w-9 rounded-full border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-colors"
-                          onClick={() => removeJob(job.id)}
-                          title="Remover vaga salva"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="glass-panel rounded-xl p-8 border-border text-center">
-                  <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <Bookmark className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium text-foreground mb-1">Nenhuma vaga salva</h3>
-                  <p className="text-muted-foreground mb-4">Você ainda não salvou nenhuma vaga de emprego.</p>
-                  <Button variant="outline" className="rounded-full border-border" asChild>
-                    <Link to="/vagas">Explorar Vagas</Link>
-                  </Button>
-                </div>
+              <h2 className="text-xl font-bold text-foreground">Candidaturas Recentes</h2>
+              {applications.length > 3 && (
+                <Button variant="link" className="text-primary p-0 h-auto" onClick={() => setActiveTab("applications")}>
+                  Ver todas
+                </Button>
               )}
             </div>
+
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+              </div>
+            ) : applications.length > 0 ? (
+              <div className="space-y-4">
+                {applications.slice(0, 5).map(app => {
+                  const job = app.jobs
+                  const st = statusLabel[app.status] || { label: app.status, color: "bg-muted text-muted-foreground" }
+                  return (
+                    <div key={app.id} className="glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                      <div className="h-12 w-12 rounded-lg bg-primary/10 border border-border flex items-center justify-center text-lg font-bold text-primary shrink-0">
+                        {job?.companies?.logo_url
+                          ? <img src={job.companies.logo_url} alt="" className="h-full w-full object-contain rounded-lg" />
+                          : getInitials(job?.companies?.name ?? null)
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {job ? (
+                          <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block">
+                            {job.title}
+                          </Link>
+                        ) : (
+                          <p className="text-base font-semibold text-foreground">Vaga removida</p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
+                          {job?.companies?.name && <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{job.companies.name}</span>}
+                          {job?.location && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{job.location}</span>}
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {new Date(app.applied_at).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`text-xs font-medium px-3 py-1 rounded-full ${st.color}`}>{st.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="glass-panel rounded-xl p-8 border-border text-center">
+                <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <Send className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium text-foreground mb-1">Nenhuma candidatura ainda</h3>
+                <p className="text-muted-foreground mb-4">Você ainda não se candidatou a nenhuma vaga.</p>
+                <Button variant="outline" className="rounded-full border-border" asChild>
+                  <Link to="/vagas">Explorar Vagas</Link>
+                </Button>
+              </div>
+            )}
           </div>
 
         </main>
