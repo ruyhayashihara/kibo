@@ -115,10 +115,10 @@ export function Jobs() {
 
   const formatSalary = (min: number | null, max: number | null) => {
     if (!min && !max) return 'A combinar'
-    const formatYen = (num: number) => `¥${(num / 10000).toFixed(0)}M`
-    if (min && max) return `${formatYen(min)} - ${formatYen(max)}`
-    if (min) return `A partir de ${formatYen(min)}`
-    return `Até ${formatYen(max!)}`
+    const formatYen = (num: number) => `¥${num.toLocaleString('pt-BR')}`
+    if (min && max) return `${formatYen(min)} ~ ${formatYen(max)}/mês`
+    if (min) return `A partir de ${formatYen(min)}/mês`
+    return `Até ${formatYen(max!)}/mês`
   }
 
   const formatDate = (dateStr: string) => {

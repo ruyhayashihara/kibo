@@ -175,10 +175,10 @@ export function JobDetail() {
 
   const formatSalary = (min: number | null, max: number | null, tbd: boolean) => {
     if (tbd || (!min && !max)) return 'A combinar'
-    const fmt = (n: number) => `¥${(n / 10000).toFixed(0)}M`
-    if (min && max) return `${fmt(min)} - ${fmt(max)}`
-    if (min) return `A partir de ${fmt(min)}`
-    return `Até ${fmt(max!)}`
+    const fmt = (n: number) => `¥${n.toLocaleString('pt-BR')}`
+    if (min && max) return `${fmt(min)} ~ ${fmt(max)}/mês`
+    if (min) return `A partir de ${fmt(min)}/mês`
+    return `Até ${fmt(max!)}/mês`
   }
 
   const formatDate = (dateStr: string) =>
