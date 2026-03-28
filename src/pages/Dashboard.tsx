@@ -150,6 +150,7 @@ export function Dashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -199,37 +200,17 @@ export function Dashboard() {
     })
   }
 
-  async function uploadAvatar(file: File) {
-    setUploading(true)
+  function loadImageForCrop(file: File) {
     setUploadError(null)
-    try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = e => {
-          const img = new Image()
-          img.onload = () => {
-            const MAX = 400
-            const scale = Math.min(1, MAX / Math.max(img.width, img.height))
-            const w = Math.round(img.width * scale)
-            const h = Math.round(img.height * scale)
-            const canvas = document.createElement("canvas")
-            canvas.width = w
-            canvas.height = h
-            canvas.getContext("2d")!.drawImage(img, 0, 0, w, h)
-            resolve(canvas.toDataURL("image/jpeg", 0.82))
-          }
-          img.onerror = reject
-          img.src = e.target!.result as string
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
-      setDraft(d => ({ ...d, avatar_url: dataUrl }))
-    } catch {
-      setUploadError("Erro ao processar a imagem. Tente outro arquivo.")
-    } finally {
-      setUploading(false)
-    }
+    const reader = new FileReader()
+    reader.onload = e => setCropSrc(e.target!.result as string)
+    reader.onerror = () => setUploadError("Erro ao ler o arquivo. Tente outro.")
+    reader.readAsDataURL(file)
+  }
+
+  function handleCropConfirm(dataUrl: string) {
+    setDraft(d => ({ ...d, avatar_url: dataUrl }))
+    setCropSrc(null)
   }
 
   const startEditing = () => {
@@ -577,7 +558,7 @@ export function Dashboard() {
                           className="hidden"
                           onChange={e => {
                             const file = e.target.files?.[0]
-                            if (file) uploadAvatar(file)
+                            if (file) loadImageForCrop(file)
                             e.target.value = ""
                           }}
                         />
@@ -827,6 +808,15 @@ export function Dashboard() {
 
         </main>
       </div>
+
+      {/* ── Avatar Cropper Modal ── */}
+      {cropSrc && (
+        <AvatarCropper
+          imageSrc={cropSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
     </div>
   )
 }
@@ -907,6 +897,153 @@ function ApplicationList({ applications, loading }: { applications: ApplicationW
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ─── Avatar Cropper ───────────────────────────────────────────────────────────
+
+function AvatarCropper({ imageSrc, onConfirm, onCancel }: {
+  imageSrc: string
+  onConfirm: (dataUrl: string) => void
+  onCancel: () => void
+}) {
+  const SIZE = 280
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const imgRef = useRef<HTMLImageElement | null>(null)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [scale, setScale] = useState(1)
+  const [minScale, setMinScale] = useState(1)
+  const dragging = useRef(false)
+  const lastPos = useRef({ x: 0, y: 0 })
+
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => {
+      imgRef.current = img
+      const s = SIZE / Math.min(img.width, img.height)
+      setMinScale(s)
+      setScale(s)
+      setOffset({ x: 0, y: 0 })
+    }
+    img.src = imageSrc
+  }, [imageSrc])
+
+  useEffect(() => { draw() })
+
+  function draw() {
+    const canvas = canvasRef.current
+    const img = imgRef.current
+    if (!canvas || !img) return
+    const ctx = canvas.getContext("2d")!
+    ctx.clearRect(0, 0, SIZE, SIZE)
+    const w = img.width * scale
+    const h = img.height * scale
+    const x = (SIZE - w) / 2 + offset.x
+    const y = (SIZE - h) / 2 + offset.y
+    ctx.drawImage(img, x, y, w, h)
+  }
+
+  function clampOffset(ox: number, oy: number, s: number) {
+    if (!imgRef.current) return { x: ox, y: oy }
+    const img = imgRef.current
+    const w = img.width * s
+    const h = img.height * s
+    const maxX = w / 2
+    const maxY = h / 2
+    return {
+      x: Math.min(maxX, Math.max(-maxX, ox)),
+      y: Math.min(maxY, Math.max(-maxY, oy)),
+    }
+  }
+
+  function startDrag(clientX: number, clientY: number) {
+    dragging.current = true
+    lastPos.current = { x: clientX, y: clientY }
+  }
+  function moveDrag(clientX: number, clientY: number) {
+    if (!dragging.current) return
+    const dx = clientX - lastPos.current.x
+    const dy = clientY - lastPos.current.y
+    setOffset(o => clampOffset(o.x + dx, o.y + dy, scale))
+    lastPos.current = { x: clientX, y: clientY }
+  }
+  function endDrag() { dragging.current = false }
+
+  function handleScale(s: number) {
+    setScale(s)
+    setOffset(o => clampOffset(o.x, o.y, s))
+  }
+
+  function confirm() {
+    const img = imgRef.current
+    if (!img) return
+    const OUT = 400
+    const out = document.createElement("canvas")
+    out.width = OUT; out.height = OUT
+    const ctx = out.getContext("2d")!
+    const r = OUT / SIZE
+    const w = img.width * scale * r
+    const h = img.height * scale * r
+    const x = (OUT - w) / 2 + offset.x * r
+    const y = (OUT - h) / 2 + offset.y * r
+    ctx.drawImage(img, x, y, w, h)
+    onConfirm(out.toDataURL("image/jpeg", 0.88))
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onCancel() }}
+    >
+      <div className="bg-background border border-border rounded-2xl p-6 space-y-5 w-full max-w-sm shadow-2xl">
+        <div className="text-center">
+          <h3 className="text-lg font-bold text-foreground">Ajustar foto</h3>
+          <p className="text-xs text-muted-foreground mt-1">Arraste para centralizar • Deslize para zoom</p>
+        </div>
+
+        {/* Crop preview */}
+        <div className="flex justify-center">
+          <div className="relative select-none" style={{ width: SIZE, height: SIZE }}>
+            <canvas
+              ref={canvasRef}
+              width={SIZE}
+              height={SIZE}
+              className="rounded-full cursor-grab active:cursor-grabbing"
+              style={{ touchAction: "none" }}
+              onMouseDown={e => startDrag(e.clientX, e.clientY)}
+              onMouseMove={e => moveDrag(e.clientX, e.clientY)}
+              onMouseUp={endDrag}
+              onMouseLeave={endDrag}
+              onTouchStart={e => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
+              onTouchMove={e => { e.preventDefault(); moveDrag(e.touches[0].clientX, e.touches[0].clientY) }}
+              onTouchEnd={endDrag}
+            />
+            <div className="absolute inset-0 rounded-full border-4 border-primary pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
+          </div>
+        </div>
+
+        {/* Zoom slider */}
+        <div className="flex items-center gap-3 px-1">
+          <span className="text-base font-bold text-muted-foreground select-none">−</span>
+          <input
+            type="range"
+            min={minScale}
+            max={minScale * 3}
+            step={0.01}
+            value={scale}
+            onChange={e => handleScale(Number(e.target.value))}
+            className="flex-1 accent-primary h-1"
+          />
+          <span className="text-base font-bold text-muted-foreground select-none">+</span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <Button variant="ghost" className="flex-1 rounded-full" onClick={onCancel}>Cancelar</Button>
+          <Button variant="gradient" className="flex-1 rounded-full" onClick={confirm}>Confirmar</Button>
+        </div>
+      </div>
     </div>
   )
 }
