@@ -200,24 +200,33 @@ export function Dashboard() {
   }
 
   async function uploadAvatar(file: File) {
-    if (!user) return
     setUploading(true)
     setUploadError(null)
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg"
-      const path = `${user.id}/${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, { upsert: true, contentType: file.type })
-      if (upErr) throw upErr
-      const { data } = supabase.storage.from("avatars").getPublicUrl(path)
-      setDraft(d => ({ ...d, avatar_url: data.publicUrl }))
-    } catch (err: any) {
-      setUploadError(
-        err?.message?.includes("Bucket not found")
-          ? "Bucket 'avatars' não encontrado no Supabase Storage. Crie-o como público nas configurações."
-          : "Erro ao enviar foto. Tente novamente."
-      )
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = e => {
+          const img = new Image()
+          img.onload = () => {
+            const MAX = 400
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+            const w = Math.round(img.width * scale)
+            const h = Math.round(img.height * scale)
+            const canvas = document.createElement("canvas")
+            canvas.width = w
+            canvas.height = h
+            canvas.getContext("2d")!.drawImage(img, 0, 0, w, h)
+            resolve(canvas.toDataURL("image/jpeg", 0.82))
+          }
+          img.onerror = reject
+          img.src = e.target!.result as string
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      setDraft(d => ({ ...d, avatar_url: dataUrl }))
+    } catch {
+      setUploadError("Erro ao processar a imagem. Tente outro arquivo.")
     } finally {
       setUploading(false)
     }
