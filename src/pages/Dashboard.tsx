@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import {
   LayoutDashboard, User, Settings, LogOut, Briefcase,
@@ -147,6 +147,10 @@ export function Dashboard() {
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!user) return
     async function fetchAll() {
@@ -193,6 +197,30 @@ export function Dashboard() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       return next
     })
+  }
+
+  async function uploadAvatar(file: File) {
+    if (!user) return
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg"
+      const path = `${user.id}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path)
+      setDraft(d => ({ ...d, avatar_url: data.publicUrl }))
+    } catch (err: any) {
+      setUploadError(
+        err?.message?.includes("Bucket not found")
+          ? "Bucket 'avatars' não encontrado no Supabase Storage. Crie-o como público nas configurações."
+          : "Erro ao enviar foto. Tente novamente."
+      )
+    } finally {
+      setUploading(false)
+    }
   }
 
   const startEditing = () => {
@@ -512,23 +540,75 @@ export function Dashboard() {
 
               {/* ── Seção: Foto de Perfil ── */}
               <ProfileSection icon={<Camera className="h-5 w-5 text-primary" />} title="Foto de Perfil">
-                <div className="flex items-center gap-6">
-                  <div className="h-20 w-20 rounded-full border-2 border-primary/40 overflow-hidden flex items-center justify-center bg-muted shrink-0">
-                    {(editing ? draft.avatar_url : profile?.avatar_url)
-                      ? <img src={editing ? draft.avatar_url! : profile!.avatar_url!} alt="Avatar" className="h-full w-full object-cover" />
-                      : <span className="text-2xl font-bold text-primary">{getInitials(editing ? (draft.full_name ?? null) : (profile?.full_name ?? null))}</span>
-                    }
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                  {/* Avatar preview */}
+                  <div className="relative shrink-0">
+                    <div className="h-24 w-24 rounded-full border-2 border-primary/40 overflow-hidden flex items-center justify-center bg-muted">
+                      {(editing ? draft.avatar_url : profile?.avatar_url)
+                        ? <img src={editing ? draft.avatar_url! : profile!.avatar_url!} alt="Avatar" className="h-full w-full object-cover" />
+                        : <span className="text-3xl font-bold text-primary">{getInitials(editing ? (draft.full_name ?? null) : (profile?.full_name ?? null))}</span>
+                      }
+                    </div>
+                    {uploading && (
+                      <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    {editing
-                      ? <input className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          placeholder="URL da foto (ex: https://i.imgur.com/xxx.jpg)"
-                          value={val("avatar_url")}
-                          onChange={e => set("avatar_url")(e.target.value)}
+
+                  {/* Controls */}
+                  <div className="flex-1 space-y-3">
+                    {editing ? (
+                      <>
+                        {/* Hidden file input */}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (file) uploadAvatar(file)
+                            e.target.value = ""
+                          }}
                         />
-                      : <p className="text-sm text-muted-foreground">{profile?.avatar_url ? "Foto cadastrada" : "Nenhuma foto cadastrada"}</p>
-                    }
-                    <p className="text-xs text-muted-foreground mt-1">Cole o link de uma imagem pública (Imgur, Google Photos, Gravatar, etc.)</p>
+
+                        {/* Upload button */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full gap-2 w-full sm:w-auto"
+                          disabled={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Camera className="h-4 w-4" />
+                          {uploading ? "Enviando..." : "Enviar foto do dispositivo"}
+                        </Button>
+
+                        {/* Error */}
+                        {uploadError && (
+                          <p className="text-xs text-red-400 flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />{uploadError}
+                          </p>
+                        )}
+
+                        {/* URL fallback */}
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Ou cole o link de uma imagem pública:</p>
+                          <input
+                            className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            placeholder="https://i.imgur.com/xxx.jpg"
+                            value={val("avatar_url")}
+                            onChange={e => set("avatar_url")(e.target.value)}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {profile?.avatar_url ? "Foto cadastrada. Clique em Editar para trocar." : "Nenhuma foto cadastrada. Clique em Editar para adicionar."}
+                      </p>
+                    )}
                   </div>
                 </div>
               </ProfileSection>
