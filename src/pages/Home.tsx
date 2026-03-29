@@ -6,7 +6,7 @@ import { Input } from "@/src/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Badge, BadgeProps } from "@/src/components/ui/badge"
 import { supabase } from "@/src/lib/supabase"
-import { WORK_AREAS } from "@/src/lib/areas"
+import { WORK_AREAS, matchJobToArea } from "@/src/lib/areas"
 
 const mapJlptToVariant = (jlpt: string | undefined): BadgeProps["variant"] => {
   const validVariants: BadgeProps["variant"][] = ["n1", "n2", "n3", "n4", "n5"];
@@ -38,6 +38,7 @@ export function Home() {
   const [popularTags, setPopularTags] = useState<string[]>([])
   const [totalJobs, setTotalJobs] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [allJobsForAreas, setAllJobsForAreas] = useState<{ title: string; job_type: string; requirements: string[] }[]>([])
 
   const handleSearch = () => {
     const params = new URLSearchParams()
@@ -76,7 +77,13 @@ export function Home() {
 
         const { data: allJobs } = await supabase
           .from('jobs')
-          .select('requirements, work_mode, jlpt_level')
+          .select('title, job_type, requirements, work_mode, jlpt_level')
+
+        setAllJobsForAreas((allJobs || []).map(j => ({
+          title: j.title || '',
+          job_type: j.job_type || '',
+          requirements: j.requirements || [],
+        })))
 
         if (allJobs && allJobs.length > 0) {
           const freq: Record<string, number> = {}
@@ -272,36 +279,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Explorar por Áreas */}
-      <section className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-8">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight mb-2 text-foreground">Explorar por Área</h2>
-            <p className="text-muted-foreground">Encontre vagas nas áreas mais procuradas por estrangeiros no Japão.</p>
-          </div>
-          <Button variant="link" asChild className="hidden sm:flex group text-primary">
-            <Link to="/vagas">
-              Ver todas <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {WORK_AREAS.map((area) => (
-            <button
-              key={area.slug}
-              onClick={() => navigate(`/vagas?area=${area.slug}`)}
-              className="group flex flex-col items-center gap-3 p-5 rounded-2xl bg-card border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer text-center"
-            >
-              <span className="text-3xl group-hover:scale-110 transition-transform">{area.icon}</span>
-              <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors leading-snug">
-                {area.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
       {/* Featured Jobs */}
       <section className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-10">
@@ -404,6 +381,44 @@ export function Home() {
           <Button variant="outline" className="w-full rounded-full" asChild>
             <Link to="/vagas">Ver todas as vagas</Link>
           </Button>
+        </div>
+      </section>
+
+      {/* Explorar por Área */}
+      <section className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight mb-2 text-foreground">Explorar por Área</h2>
+            <p className="text-muted-foreground">Encontre vagas nas áreas mais procuradas por estrangeiros no Japão.</p>
+          </div>
+          <Button variant="link" asChild className="hidden sm:flex group text-primary">
+            <Link to="/vagas">
+              Ver todas <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {WORK_AREAS.map((area) => {
+            const count = allJobsForAreas.filter(job => matchJobToArea(job, area)).length
+            return (
+              <button
+                key={area.slug}
+                onClick={() => navigate(`/vagas?area=${area.slug}`)}
+                className="group flex flex-col items-center gap-3 p-5 rounded-2xl bg-card border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer text-center"
+              >
+                <span className="text-3xl group-hover:scale-110 transition-transform">{area.icon}</span>
+                <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors leading-snug">
+                  {area.label}
+                </span>
+                {count > 0 && (
+                  <span className="text-xs text-muted-foreground group-hover:text-primary/70 transition-colors">
+                    {count} {count === 1 ? 'vaga' : 'vagas'}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </section>
 
