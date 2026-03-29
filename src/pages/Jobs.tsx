@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react"
 import { Link, useSearchParams, useNavigate } from "react-router-dom"
-import { Search, MapPin, Briefcase, Filter, ChevronDown, Clock, Building2 } from "lucide-react"
+import { Search, MapPin, Briefcase, Filter, ChevronDown, Clock, Building2, X } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
-import { Input } from "@/src/components/ui/input"
 import { Card, CardContent } from "@/src/components/ui/card"
 import { Badge, BadgeProps } from "@/src/components/ui/badge"
 import { supabase } from "@/src/lib/supabase"
+import { WORK_AREAS, matchJobToArea } from "@/src/lib/areas"
 
 const mapJlptToVariant = (jlpt: string | undefined): BadgeProps["variant"] => {
   const validVariants: BadgeProps["variant"][] = ["n1", "n2", "n3", "n4", "n5"];
@@ -23,11 +23,28 @@ interface JobWithCompany {
   salary_max: number | null
   jlpt_level: string | null
   requirements: string[]
+  description?: string
   is_sponsored: boolean
   is_featured: boolean
   created_at: string
   companies: { id: string; name: string; logo_url: string | null } | null
 }
+
+const JLPT_OPTIONS = [
+  { label: "N1 (Fluente)", value: "N1" },
+  { label: "N2 (Avançado)", value: "N2" },
+  { label: "N3 (Intermediário)", value: "N3" },
+  { label: "N4 (Básico)", value: "N4" },
+  { label: "N5 (Iniciante)", value: "N5" },
+  { label: "Sem requisito", value: "none" },
+]
+
+const CONTRACT_OPTIONS = [
+  { label: "CLT (Seishain)", value: "CLT" },
+  { label: "Contrato (Keiyaku)", value: "Contrato" },
+  { label: "Meio Período (Arubaito)", value: "Arubaito" },
+  { label: "Autônomo (Kojin Jigyou Nushi)", value: "Autônomo" },
+]
 
 export function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -41,8 +58,19 @@ export function Jobs() {
   const [locationInput, setLocationInput] = useState(searchParams.get("location") || "")
   const [currentPage, setCurrentPage] = useState(1)
 
+  const [selectedJlpt, setSelectedJlpt] = useState<string[]>([])
+  const [selectedContracts, setSelectedContracts] = useState<string[]>([])
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([])
+
   const activeQuery = searchParams.get("q") || ""
   const activeLocation = searchParams.get("location") || ""
+  const activeArea = searchParams.get("area") || ""
+
+  useEffect(() => {
+    if (activeArea) {
+      setSelectedAreas([activeArea])
+    }
+  }, [activeArea])
 
   const totalPages = Math.max(1, Math.ceil(jobs.length / JOBS_PER_PAGE))
   const pagedJobs = jobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE)
@@ -74,32 +102,93 @@ export function Jobs() {
   }, [activeLocation])
 
   useEffect(() => {
-    if (!activeQuery) {
-      setJobs(allJobs)
-      return
-    }
-    const q = activeQuery.toLowerCase()
-    setJobs(
-      allJobs.filter(job =>
+    let filtered = [...allJobs]
+
+    if (activeQuery) {
+      const q = activeQuery.toLowerCase()
+      filtered = filtered.filter(job =>
         job.title.toLowerCase().includes(q) ||
         (job.companies?.name || "").toLowerCase().includes(q) ||
         (job.requirements ?? []).some(r => r.toLowerCase().includes(q)) ||
         job.location.toLowerCase().includes(q) ||
         job.work_mode.toLowerCase().includes(q)
       )
-    )
-  }, [activeQuery, allJobs])
+    }
+
+    if (selectedJlpt.length > 0) {
+      filtered = filtered.filter(job => {
+        if (selectedJlpt.includes("none")) {
+          if (!job.jlpt_level || job.jlpt_level === "" || job.jlpt_level === "N/A") return true
+        }
+        return selectedJlpt.some(lvl => lvl !== "none" && job.jlpt_level?.toUpperCase() === lvl)
+      })
+    }
+
+    if (selectedContracts.length > 0) {
+      filtered = filtered.filter(job =>
+        selectedContracts.some(ct => job.job_type.toLowerCase().includes(ct.toLowerCase()))
+      )
+    }
+
+    if (selectedAreas.length > 0) {
+      filtered = filtered.filter(job =>
+        selectedAreas.some(areaSlug => {
+          const area = WORK_AREAS.find(a => a.slug === areaSlug)
+          return area ? matchJobToArea(job, area) : false
+        })
+      )
+    }
+
+    setJobs(filtered)
+  }, [activeQuery, allJobs, selectedJlpt, selectedContracts, selectedAreas])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeQuery, activeLocation])
+  }, [activeQuery, activeLocation, selectedJlpt, selectedContracts, selectedAreas])
 
   const handleSearch = () => {
     const params: Record<string, string> = {}
     if (searchInput.trim()) params.q = searchInput.trim()
     if (locationInput) params.location = locationInput
     setSearchParams(params)
+    setSelectedAreas([])
   }
+
+  const toggleJlpt = (value: string) => {
+    setSelectedJlpt(prev =>
+      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
+    )
+  }
+
+  const toggleContract = (value: string) => {
+    setSelectedContracts(prev =>
+      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
+    )
+  }
+
+  const toggleArea = (slug: string) => {
+    setSelectedAreas(prev => {
+      const next = prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug]
+      const newParams: Record<string, string> = {}
+      if (activeQuery) newParams.q = activeQuery
+      if (activeLocation) newParams.location = activeLocation
+      if (next.length === 1) newParams.area = next[0]
+      setSearchParams(newParams)
+      return next
+    })
+  }
+
+  const clearAllFilters = () => {
+    setSelectedJlpt([])
+    setSelectedContracts([])
+    setSelectedAreas([])
+    const newParams: Record<string, string> = {}
+    if (activeQuery) newParams.q = activeQuery
+    if (activeLocation) newParams.location = activeLocation
+    setSearchParams(newParams)
+  }
+
+  const hasActiveFilters = selectedJlpt.length > 0 || selectedContracts.length > 0 || selectedAreas.length > 0
 
   const getPageNumbers = (): (number | "...")[] => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -136,6 +225,7 @@ export function Jobs() {
   const getCompanyInitials = (name: string) => {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   }
+
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
       {/* Search Header */}
@@ -228,7 +318,9 @@ export function Jobs() {
             Buscar
           </Button>
         </div>
-        {(activeQuery || activeLocation) && (
+
+        {/* Active filter chips */}
+        {(activeQuery || activeLocation || hasActiveFilters) && (
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">Filtrando por:</span>
             {activeQuery && (
@@ -242,6 +334,41 @@ export function Jobs() {
                 {activeLocation}
                 <button onClick={() => { setLocationInput(""); setSearchParams(activeQuery ? { q: activeQuery } : {}); }} className="ml-1 hover:text-primary/60">×</button>
               </span>
+            )}
+            {selectedJlpt.map(lvl => {
+              const opt = JLPT_OPTIONS.find(o => o.value === lvl)
+              return (
+                <span key={lvl} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-sm px-3 py-1 rounded-full">
+                  {opt?.label || lvl}
+                  <button onClick={() => toggleJlpt(lvl)} className="ml-1 hover:text-primary/60">×</button>
+                </span>
+              )
+            })}
+            {selectedContracts.map(ct => {
+              const opt = CONTRACT_OPTIONS.find(o => o.value === ct)
+              return (
+                <span key={ct} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-sm px-3 py-1 rounded-full">
+                  {opt?.label || ct}
+                  <button onClick={() => toggleContract(ct)} className="ml-1 hover:text-primary/60">×</button>
+                </span>
+              )
+            })}
+            {selectedAreas.map(slug => {
+              const area = WORK_AREAS.find(a => a.slug === slug)
+              return (
+                <span key={slug} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-sm px-3 py-1 rounded-full">
+                  {area?.icon} {area?.label || slug}
+                  <button onClick={() => toggleArea(slug)} className="ml-1 hover:text-primary/60">×</button>
+                </span>
+              )
+            })}
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm px-2 py-1 rounded-full hover:bg-muted transition-colors"
+              >
+                <X className="h-3 w-3" /> Limpar filtros
+              </button>
             )}
           </div>
         )}
@@ -259,48 +386,104 @@ export function Jobs() {
           </div>
           
           <div className="glass-panel rounded-2xl p-6 hidden lg:block space-y-8">
+
+            {/* JLPT Level */}
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Nível de Japonês</h3>
               <div className="space-y-3">
-                {["N1 (Fluente)", "N2 (Avançado)", "N3 (Intermediário)", "N4 (Básico)", "N5 (Iniciante)", "Sem requisito"].map((level) => (
-                  <label key={level} className="flex items-center gap-3 cursor-pointer group">
-                    <div className="w-5 h-5 rounded border border-border bg-muted group-hover:border-primary transition-colors flex items-center justify-center">
-                    </div>
-                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{level}</span>
-                  </label>
-                ))}
+                {JLPT_OPTIONS.map(({ label, value }) => {
+                  const checked = selectedJlpt.includes(value)
+                  return (
+                    <label key={value} className="flex items-center gap-3 cursor-pointer group" onClick={() => toggleJlpt(value)}>
+                      <div className={`w-5 h-5 rounded border transition-colors flex items-center justify-center shrink-0 ${
+                        checked
+                          ? 'bg-primary border-primary'
+                          : 'border-border bg-muted group-hover:border-primary'
+                      }`}>
+                        {checked && (
+                          <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`text-sm transition-colors ${checked ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                        {label}
+                      </span>
+                    </label>
+                  )
+                })}
               </div>
             </div>
 
             <div className="h-px w-full bg-border" />
 
+            {/* Contract Type */}
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Tipo de Contrato</h3>
               <div className="space-y-3">
-                {["CLT (Seishain)", "Contrato (Keiyaku)", "Meio Período (Arubaito)", "Autônomo (Kojin Jigyou Nushi)"].map((type) => (
-                  <label key={type} className="flex items-center gap-3 cursor-pointer group">
-                    <div className="w-5 h-5 rounded border border-border bg-muted group-hover:border-primary transition-colors flex items-center justify-center" />
-                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{type}</span>
-                  </label>
-                ))}
+                {CONTRACT_OPTIONS.map(({ label, value }) => {
+                  const checked = selectedContracts.includes(value)
+                  return (
+                    <label key={value} className="flex items-center gap-3 cursor-pointer group" onClick={() => toggleContract(value)}>
+                      <div className={`w-5 h-5 rounded border transition-colors flex items-center justify-center shrink-0 ${
+                        checked
+                          ? 'bg-primary border-primary'
+                          : 'border-border bg-muted group-hover:border-primary'
+                      }`}>
+                        {checked && (
+                          <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`text-sm transition-colors ${checked ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                        {label}
+                      </span>
+                    </label>
+                  )
+                })}
               </div>
             </div>
 
             <div className="h-px w-full bg-border" />
 
+            {/* Área de Trabalho */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Indústria</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Área de Trabalho</h3>
               <div className="space-y-3">
-                {["TI & Software", "Educação", "Engenharia", "Vendas & Marketing", "Finanças"].map((ind) => (
-                  <label key={ind} className="flex items-center gap-3 cursor-pointer group">
-                    <div className="w-5 h-5 rounded border border-border bg-muted group-hover:border-primary transition-colors flex items-center justify-center" />
-                    <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{ind}</span>
-                  </label>
-                ))}
+                {WORK_AREAS.map((area) => {
+                  const checked = selectedAreas.includes(area.slug)
+                  return (
+                    <label key={area.slug} className="flex items-center gap-3 cursor-pointer group" onClick={() => toggleArea(area.slug)}>
+                      <div className={`w-5 h-5 rounded border transition-colors flex items-center justify-center shrink-0 ${
+                        checked
+                          ? 'bg-primary border-primary'
+                          : 'border-border bg-muted group-hover:border-primary'
+                      }`}>
+                        {checked && (
+                          <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`text-sm transition-colors flex items-center gap-1.5 ${checked ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                        <span>{area.icon}</span>
+                        <span>{area.label}</span>
+                      </span>
+                    </label>
+                  )
+                })}
               </div>
             </div>
             
-            <Button variant="outline" className="w-full rounded-xl">Limpar Filtros</Button>
+            <Button
+              variant="outline"
+              className="w-full rounded-xl"
+              onClick={clearAllFilters}
+              disabled={!hasActiveFilters}
+            >
+              Limpar Filtros
+            </Button>
           </div>
         </aside>
 
@@ -309,7 +492,7 @@ export function Jobs() {
           <div className="flex items-center justify-between mb-6">
             <p className="text-sm text-muted-foreground">
               Mostrando <span className="text-foreground font-medium">{jobs.length}</span> vaga{jobs.length !== 1 ? "s" : ""}
-              {(activeQuery || activeLocation) && allJobs.length !== jobs.length && (
+              {(activeQuery || activeLocation || hasActiveFilters) && allJobs.length !== jobs.length && (
                 <span className="ml-1">de {allJobs.length} total</span>
               )}
             </p>
@@ -413,7 +596,12 @@ export function Jobs() {
               ))
             ) : (
               <div className="text-center py-12 text-muted-foreground">
-                Nenhuma vaga encontrada.
+                <p className="text-lg mb-2">Nenhuma vaga encontrada.</p>
+                {hasActiveFilters && (
+                  <button onClick={clearAllFilters} className="text-primary hover:underline text-sm">
+                    Limpar filtros e tentar novamente
+                  </button>
+                )}
               </div>
             )}
           </div>

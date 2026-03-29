@@ -6,6 +6,7 @@ import { Input } from "@/src/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Badge, BadgeProps } from "@/src/components/ui/badge"
 import { supabase } from "@/src/lib/supabase"
+import { WORK_AREAS } from "@/src/lib/areas"
 
 const mapJlptToVariant = (jlpt: string | undefined): BadgeProps["variant"] => {
   const validVariants: BadgeProps["variant"][] = ["n1", "n2", "n3", "n4", "n5"];
@@ -68,13 +69,11 @@ export function Home() {
         if (companiesError) throw companiesError
         setCompanies(companiesData || [])
 
-        // Total real de vagas em aberto
         const { count: jobsCount } = await supabase
           .from('jobs')
           .select('*', { count: 'exact', head: true })
         setTotalJobs(jobsCount ?? 0)
 
-        // Buscar termos mais populares das vagas
         const { data: allJobs } = await supabase
           .from('jobs')
           .select('requirements, work_mode, jlpt_level')
@@ -83,18 +82,15 @@ export function Home() {
           const freq: Record<string, number> = {}
 
           allJobs.forEach(job => {
-            // Contar requisitos individuais
             ;(job.requirements || []).forEach((req: string) => {
               const key = req.trim()
               if (key.length > 2 && key.length < 40) {
                 freq[key] = (freq[key] || 0) + 1
               }
             })
-            // Contar modo de trabalho
             if (job.work_mode) {
               freq[job.work_mode] = (freq[job.work_mode] || 0) + 1
             }
-            // Contar nível JLPT
             if (job.jlpt_level) {
               freq[job.jlpt_level] = (freq[job.jlpt_level] || 0) + 1
             }
@@ -128,6 +124,7 @@ export function Home() {
   const getCompanyInitials = (name: string) => {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   }
+
   return (
     <div className="flex flex-col gap-24 pb-24">
       {/* Hero Section */}
@@ -272,6 +269,36 @@ export function Home() {
         <span className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Anúncio</span>
         <div className="w-[320px] h-[50px] md:w-[728px] md:h-[90px] bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-muted-foreground text-xs md:text-sm font-medium">
           Espaço publicitário — <span className="hidden md:inline ml-1">728x90</span><span className="md:hidden ml-1">320x50</span>
+        </div>
+      </section>
+
+      {/* Explorar por Áreas */}
+      <section className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-8">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight mb-2 text-foreground">Explorar por Área</h2>
+            <p className="text-muted-foreground">Encontre vagas nas áreas mais procuradas por estrangeiros no Japão.</p>
+          </div>
+          <Button variant="link" asChild className="hidden sm:flex group text-primary">
+            <Link to="/vagas">
+              Ver todas <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {WORK_AREAS.map((area) => (
+            <button
+              key={area.slug}
+              onClick={() => navigate(`/vagas?area=${area.slug}`)}
+              className="group flex flex-col items-center gap-3 p-5 rounded-2xl bg-card border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer text-center"
+            >
+              <span className="text-3xl group-hover:scale-110 transition-transform">{area.icon}</span>
+              <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors leading-snug">
+                {area.label}
+              </span>
+            </button>
+          ))}
         </div>
       </section>
 
