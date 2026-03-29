@@ -466,9 +466,8 @@ export function Jobs() {
                           </svg>
                         )}
                       </div>
-                      <span className={`text-sm transition-colors flex items-center gap-1.5 ${checked ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground'}`}>
-                        <span>{area.icon}</span>
-                        <span>{area.label}</span>
+                      <span className={`text-sm transition-colors ${checked ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                        {area.label}
                       </span>
                     </label>
                   )
