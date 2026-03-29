@@ -25,21 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true)
       
-      // Demo bypass for testing admin
-      if (email === "admin@kibojobs.com" && password === "admin123") {
-        const mockUser = {
-          id: "demo-admin-id",
-          email: "admin@kibojobs.com",
-          user_metadata: { is_admin: true },
-          app_metadata: { role: "admin" }
-        } as any;
-        setUser(mockUser);
-        setIsAdmin(true);
-        setIsCompany(false);
-        setIsCandidate(false);
-        setLoading(false);
-        return { data: { user: mockUser }, error: null };
-      }
+
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,

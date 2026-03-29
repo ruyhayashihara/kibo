@@ -42,9 +42,9 @@ const createStubClient = (): SupabaseClient => {
     auth: {
       getSession: async () => ({ data: { session: null }, error: null }),
       onAuthStateChange: (_event: any, _callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signInWithPassword: async () => ({ data: null, error: { message: 'Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your Replit Secrets.' } }),
+      signInWithPassword: async () => ({ data: null, error: { message: 'Authentication service unavailable' } }),
       signOut: async () => ({ error: null }),
-      signUp: async () => ({ data: null, error: { message: 'Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your Replit Secrets.' } }),
+      signUp: async () => ({ data: null, error: { message: 'Authentication service unavailable' } }),
     },
     from: (_table: string) => noopQueryBuilder,
   } as unknown as SupabaseClient

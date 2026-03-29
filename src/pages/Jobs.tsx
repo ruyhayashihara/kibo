@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react"
 import { Link, useSearchParams, useNavigate } from "react-router-dom"
-import { Search, MapPin, Briefcase, Filter, ChevronDown, Clock, Building2, X } from "lucide-react"
+import { 
+  Search, MapPin, Briefcase, Filter, ChevronDown, Clock, Building2, X,
+  Monitor, Wrench, GraduationCap, Languages, Utensils, Hotel, HeartPulse, 
+  Package, HardHat, Coins, Palette, Leaf, Factory, UserCheck, Coffee
+} from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent } from "@/src/components/ui/card"
 import { Badge, BadgeProps } from "@/src/components/ui/badge"
@@ -353,15 +357,37 @@ export function Jobs() {
                 </span>
               )
             })}
-            {selectedAreas.map(slug => {
-              const area = WORK_AREAS.find(a => a.slug === slug)
-              return (
-                <span key={slug} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-sm px-3 py-1 rounded-full">
-                  {area?.icon} {area?.label || slug}
-                  <button onClick={() => toggleArea(slug)} className="ml-1 hover:text-primary/60">×</button>
-                </span>
-              )
-            })}
+             {selectedAreas.map(slug => {
+               const area = WORK_AREAS.find(a => a.slug === slug)
+               // Map iconName string to actual Lucide icon component
+               const IconComponent = (() => {
+                 switch(area?.iconName) {
+                   case 'Monitor': return Monitor;
+                   case 'Wrench': return Wrench;
+                   case 'GraduationCap': return GraduationCap;
+                   case 'Languages': return Languages;
+                   case 'Utensils': return Utensils;
+                   case 'Hotel': return Hotel;
+                   case 'HeartPulse': return HeartPulse;
+                   case 'Package': return Package;
+                   case 'HardHat': return HardHat;
+                   case 'Coins': return Coins;
+                   case 'Palette': return Palette;
+                   case 'Leaf': return Leaf;
+                   case 'Factory': return Factory;
+                   case 'UserCheck': return UserCheck;
+                   case 'Coffee': return Coffee;
+                   default: return null;
+                 }
+               })();
+               return (
+                 <span key={slug} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-sm px-3 py-1 rounded-full">
+                   {IconComponent ? <IconComponent className="h-4 w-4" /> : null}
+                   {area?.label || slug}
+                   <button onClick={() => toggleArea(slug)} className="ml-1 hover:text-primary/60">×</button>
+                 </span>
+               )
+             })}
             {hasActiveFilters && (
               <button
                 onClick={clearAllFilters}
@@ -520,7 +546,20 @@ export function Jobs() {
               </>
             ) : pagedJobs.length > 0 ? (
               pagedJobs.map((job) => (
-                <Card key={job.id} className={`glass-panel-hover flex flex-col sm:flex-row gap-6 p-6 transition-all cursor-pointer border-border ${job.is_featured ? 'border-primary/30 glow-primary/10 bg-primary/5' : ''}`}>
+                <Card 
+                  key={job.id} 
+                  className={`glass-panel-hover flex flex-col sm:flex-row gap-6 p-6 transition-all cursor-pointer border-border focus-within:ring-2 focus-within:ring-primary focus:outline-none ${job.is_featured ? 'border-primary/30 glow-primary/10 bg-primary/5' : ''}`}
+                  onClick={() => navigate(`/vagas/${job.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/vagas/${job.id}`);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Ver detalhes da vaga ${job.title}`}
+                >
                   {job.companies?.logo_url ? (
                     <img 
                       src={job.companies.logo_url} 
@@ -538,7 +577,7 @@ export function Jobs() {
                       <div>
                         <div className="flex items-center gap-3 mb-1">
                           <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-                            <Link to={`/vagas/${job.id}`} className="hover:underline">{job.title}</Link>
+                            <Link to={`/vagas/${job.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{job.title}</Link>
                           </h3>
                           {job.is_featured && (
                             <Badge variant="glass" className="bg-primary/20 text-primary border-primary/30 text-[10px] uppercase tracking-wider py-0">
@@ -549,7 +588,7 @@ export function Jobs() {
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Building2 className="mr-1.5 h-4 w-4" />
                           {job.companies?.id ? (
-                            <Link to={`/empresa/${job.companies.id}`} className="hover:text-primary transition-colors hover:underline">
+                            <Link to={`/empresa/${job.companies.id}`} className="hover:text-primary transition-colors hover:underline" onClick={(e) => e.stopPropagation()}>
                               {job.companies.name || 'Empresa'}
                             </Link>
                           ) : (
@@ -586,7 +625,7 @@ export function Jobs() {
                       <div className="flex items-center gap-4">
                         <span className="text-xs text-muted-foreground hidden sm:inline-block">{formatDate(job.created_at)}</span>
                         <Button variant="secondary" size="sm" className="rounded-full bg-muted hover:bg-muted/80" asChild>
-                          <Link to={`/vagas/${job.id}`}>Ver Vaga</Link>
+                          <Link to={`/vagas/${job.id}`} onClick={(e) => e.stopPropagation()}>Ver Vaga</Link>
                         </Button>
                       </div>
                     </div>

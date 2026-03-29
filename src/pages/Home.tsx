@@ -328,7 +328,20 @@ export function Home() {
             </>
           ) : featuredJobs.length > 0 ? (
             featuredJobs.map((job) => (
-              <Card key={job.id} className="glass-panel-hover flex flex-col group cursor-pointer border-border">
+              <Card 
+                key={job.id} 
+                className="glass-panel-hover flex flex-col group cursor-pointer border-border focus-within:ring-2 focus-within:ring-primary focus:outline-none"
+                onClick={() => navigate(`/vagas/${job.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/vagas/${job.id}`);
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label={`Ver detalhes da vaga ${job.title}`}
+              >
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start mb-4">
                     {job.companies?.logo_url ? (
@@ -375,7 +388,7 @@ export function Home() {
                 </CardContent>
                 <CardFooter className="pt-0 border-t border-border mt-auto">
                   <Button variant="ghost" className="w-full mt-4 justify-between group-hover:bg-muted" asChild>
-                    <Link to={`/vagas/${job.id}`}>
+                    <Link to={`/vagas/${job.id}`} onClick={(e) => e.stopPropagation()}>
                       Ver detalhes <ChevronRight className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -458,7 +471,20 @@ export function Home() {
               </>
             ) : companies.length > 0 ? (
               companies.map((company) => (
-                <div key={company.id} className="aspect-square rounded-2xl bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-colors cursor-pointer group overflow-hidden">
+                <div 
+                  key={company.id} 
+                  className="aspect-square rounded-2xl bg-muted border border-border flex items-center justify-center hover:bg-muted/80 hover:border-primary/50 transition-colors cursor-pointer group overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
+                  onClick={() => navigate(`/empresa/${company.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/empresa/${company.id}`);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Ver vagas da empresa ${company.name}`}
+                >
                   {company.logo_url ? (
                     <img src={company.logo_url} alt={company.name} className="w-10 h-10 object-contain" />
                   ) : (

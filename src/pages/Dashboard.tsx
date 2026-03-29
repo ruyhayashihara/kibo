@@ -181,16 +181,24 @@ export function Dashboard() {
     fetchAll()
   }, [user])
 
-  useEffect(() => {
-    if (savedJobIds.length === 0) { setSavedJobsData([]); return }
-    setSavedLoading(true)
-    supabase
-      .from("jobs")
-      .select("id, title, location, job_type, salary_min, salary_max, companies(name, logo_url)")
-      .in("id", savedJobIds)
-      .then(({ data }) => { setSavedJobsData((data as any) || []) })
-      .finally(() => setSavedLoading(false))
-  }, [savedJobIds])
+   useEffect(() => {
+     if (savedJobIds.length === 0) { setSavedJobsData([]); return }
+     setSavedLoading(true)
+     const fetchSavedJobs = async () => {
+       try {
+         const { data } = await supabase
+           .from("jobs")
+           .select("id, title, location, job_type, salary_min, salary_max, companies(name, logo_url)")
+           .in("id", savedJobIds);
+         setSavedJobsData(data || []);
+       } catch (error) {
+         console.error('Error fetching saved jobs:', error);
+       } finally {
+         setSavedLoading(false);
+       }
+     };
+     fetchSavedJobs();
+   }, [savedJobIds])
 
   function removeSaved(jobId: string) {
     setSavedJobIds(prev => {
@@ -459,14 +467,27 @@ export function Dashboard() {
                       ? `¥${job.salary_min.toLocaleString("pt-BR")} ~ ¥${job.salary_max.toLocaleString("pt-BR")}/mês`
                       : null
                     return (
-                      <div key={job.id} className="glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                      <div 
+                        key={job.id} 
+                        className="glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center cursor-pointer hover:border-primary/40 focus-within:ring-2 focus-within:ring-primary focus:outline-none transition-colors"
+                        onClick={() => navigate(`/vagas/${job.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate(`/vagas/${job.id}`);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`Ver detalhes da vaga ${job.title}`}
+                      >
                         <div className="h-12 w-12 rounded-lg bg-primary/10 border border-border flex items-center justify-center text-sm font-bold text-primary shrink-0 overflow-hidden">
                           {job.companies?.logo_url
                             ? <img src={job.companies.logo_url} alt="" className="h-full w-full object-contain" />
                             : initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block">
+                          <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block" onClick={(e) => e.stopPropagation()}>
                             {job.title}
                           </Link>
                           <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
@@ -477,10 +498,10 @@ export function Dashboard() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <Button variant="outline" size="sm" className="rounded-full gap-1.5 text-xs" asChild>
-                            <Link to={`/vagas/${job.id}`}><ExternalLink className="h-3.5 w-3.5" />Ver vaga</Link>
+                            <Link to={`/vagas/${job.id}`} onClick={(e) => e.stopPropagation()}><ExternalLink className="h-3.5 w-3.5" />Ver vaga</Link>
                           </Button>
                           <button
-                            onClick={() => removeSaved(job.id)}
+                            onClick={(e) => { e.stopPropagation(); removeSaved(job.id); }}
                             title="Remover dos favoritos"
                             className="h-8 w-8 rounded-full flex items-center justify-center border border-border bg-muted hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-muted-foreground transition-colors"
                           >
@@ -850,6 +871,7 @@ function StatCard({ icon: Icon, color, label, value, onClick }: { icon: any; col
 }
 
 function ApplicationList({ applications, loading }: { applications: ApplicationWithJob[]; loading: boolean }) {
+  const navigate = useNavigate()
   if (loading) return (
     <div className="space-y-4">
       {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
@@ -876,7 +898,20 @@ function ApplicationList({ applications, loading }: { applications: ApplicationW
           ? job.companies.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
           : "?"
         return (
-          <div key={app.id} className="glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div 
+            key={app.id} 
+            className={`glass-panel rounded-xl p-5 border-border flex flex-col sm:flex-row gap-4 items-start sm:items-center transition-colors ${job ? "cursor-pointer hover:border-primary/40 focus-within:ring-2 focus-within:ring-primary focus:outline-none" : ""}`}
+            onClick={() => job && navigate(`/vagas/${job.id}`)}
+            onKeyDown={(e) => {
+              if (job && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                navigate(`/vagas/${job.id}`);
+              }
+            }}
+            tabIndex={job ? 0 : -1}
+            role={job ? "button" : "presentation"}
+            aria-label={job ? `Ver detalhes da vaga ${job.title}` : undefined}
+          >
             <div className="h-12 w-12 rounded-lg bg-primary/10 border border-border flex items-center justify-center text-sm font-bold text-primary shrink-0 overflow-hidden">
               {job?.companies?.logo_url
                 ? <img src={job.companies.logo_url} alt="" className="h-full w-full object-contain" />
@@ -884,7 +919,7 @@ function ApplicationList({ applications, loading }: { applications: ApplicationW
             </div>
             <div className="flex-1 min-w-0">
               {job
-                ? <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block">{job.title}</Link>
+                ? <Link to={`/vagas/${job.id}`} className="text-base font-semibold text-foreground hover:text-primary transition-colors truncate block" onClick={(e) => e.stopPropagation()}>{job.title}</Link>
                 : <p className="text-base font-semibold text-foreground/60">Vaga removida</p>
               }
               <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">

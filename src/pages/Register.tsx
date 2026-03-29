@@ -213,23 +213,7 @@ export function Register() {
                     />
                   </div>
                   
-                  {/* Demo Admin Login Button */}
-                  <div className="pt-2">
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      className="w-full border-primary/30 hover:bg-primary/10 text-primary text-xs h-8"
-                      onClick={() => {
-                        setEmail("admin@kibojobs.com");
-                        setPassword("admin123");
-                      }}
-                    >
-                      Preencher credenciais de Admin (Demo)
-                    </Button>
-                    <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                      Use estas credenciais para testar a proteção da rota /admin.
-                    </p>
-                  </div>
+
                 </>
               ) : (
                 <>
