@@ -1,18 +1,58 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-const isSupabaseConfigured = supabaseUrl && supabaseAnonKey && 
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey && 
   supabaseUrl !== 'https://your-project.supabase.co' && 
-  supabaseAnonKey !== 'your-anon-key'
+  supabaseAnonKey !== 'your-anon-key')
 
 if (!isSupabaseConfigured) {
   console.warn('[KiboJobs] Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the Replit Secrets panel.')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-export { isSupabaseConfigured }
+const noopQueryBuilder: any = {
+  select: () => noopQueryBuilder,
+  insert: () => noopQueryBuilder,
+  update: () => noopQueryBuilder,
+  delete: () => noopQueryBuilder,
+  upsert: () => noopQueryBuilder,
+  eq: () => noopQueryBuilder,
+  neq: () => noopQueryBuilder,
+  gt: () => noopQueryBuilder,
+  gte: () => noopQueryBuilder,
+  lt: () => noopQueryBuilder,
+  lte: () => noopQueryBuilder,
+  like: () => noopQueryBuilder,
+  ilike: () => noopQueryBuilder,
+  is: () => noopQueryBuilder,
+  in: () => noopQueryBuilder,
+  contains: () => noopQueryBuilder,
+  containedBy: () => noopQueryBuilder,
+  order: () => noopQueryBuilder,
+  limit: () => noopQueryBuilder,
+  range: () => noopQueryBuilder,
+  single: () => Promise.resolve({ data: null, error: null }),
+  maybeSingle: () => Promise.resolve({ data: null, error: null }),
+  then: (resolve: (v: any) => any) => Promise.resolve({ data: null, error: null, count: null }).then(resolve),
+}
+
+const createStubClient = (): SupabaseClient => {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: (_event: any, _callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: null, error: { message: 'Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your Replit Secrets.' } }),
+      signOut: async () => ({ error: null }),
+      signUp: async () => ({ data: null, error: { message: 'Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your Replit Secrets.' } }),
+    },
+    from: (_table: string) => noopQueryBuilder,
+  } as unknown as SupabaseClient
+}
+
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createStubClient()
 
 export type Database = {
   public: {
