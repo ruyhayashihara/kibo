@@ -402,23 +402,33 @@ export function Home() {
           <p className="text-muted-foreground">Encontre vagas nas principais áreas para estrangeiros no Japão.</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {WORK_AREAS.map((area) => {
             const IconComponent = AREA_ICONS[area.iconName]
             return (
               <button
                 key={area.slug}
                 onClick={() => navigate(`/vagas?area=${area.slug}`)}
-                className="group flex flex-col items-start gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 hover:shadow-md transition-all cursor-pointer text-left"
+                className="flex flex-col items-start gap-3 p-[18px] rounded-[18px] border-0 cursor-pointer text-left transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-lg"
+                style={{ background: area.cardBg }}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${area.iconBg} transition-transform group-hover:scale-105`}>
-                  {IconComponent && <IconComponent className={`w-6 h-6 ${area.iconColor}`} />}
+                <div
+                  className="w-[42px] h-[42px] rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: area.iconBgColor }}
+                >
+                  {IconComponent && <IconComponent className="w-5 h-5 text-white" />}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground leading-snug mb-1 group-hover:text-primary transition-colors">
+                  <p
+                    className="text-[13px] font-extrabold leading-snug mb-1 tracking-tight"
+                    style={{ color: area.textColor }}
+                  >
                     {area.label}
                   </p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p
+                    className="text-[11px] leading-relaxed"
+                    style={{ color: area.textColor, opacity: 0.6 }}
+                  >
                     {area.description}
                   </p>
                 </div>
