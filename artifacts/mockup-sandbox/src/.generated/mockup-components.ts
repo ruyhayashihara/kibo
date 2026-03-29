@@ -4,5 +4,8 @@ export const modules: ModuleMap = {
   "./components/mockups/area-explorer/Carousel.tsx": () => import("../components/mockups/area-explorer/Carousel.tsx"),
   "./components/mockups/area-explorer/SearchExplorer.tsx": () => import("../components/mockups/area-explorer/SearchExplorer.tsx"),
   "./components/mockups/area-explorer/Spotlight.tsx": () => import("../components/mockups/area-explorer/Spotlight.tsx"),
-  "./components/mockups/area-explorer/TagFlow.tsx": () => import("../components/mockups/area-explorer/TagFlow.tsx")
+  "./components/mockups/area-explorer/TagFlow.tsx": () => import("../components/mockups/area-explorer/TagFlow.tsx"),
+  "./components/mockups/area-explorer/VibeTechnical.tsx": () => import("../components/mockups/area-explorer/VibeTechnical.tsx"),
+  "./components/mockups/area-explorer/VibeVibrant.tsx": () => import("../components/mockups/area-explorer/VibeVibrant.tsx"),
+  "./components/mockups/area-explorer/VibeWarm.tsx": () => import("../components/mockups/area-explorer/VibeWarm.tsx")
 };
